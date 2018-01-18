@@ -1,12 +1,13 @@
 ******************
-Hardware Reference
+硬件参考
 ******************
 
 .. toctree::
 
-   Technical Reference Manual (PDF) <http://espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf>
-   Pin List and Functions (PDF) <http://espressif.com/sites/default/files/documentation/esp32_chip_pin_list_en.pdf>
-   Chip Pinout (PDF) <http://espressif.com/sites/default/files/documentation/esp32_pinout_v1_0.pdf>
-   Silicon Errata (PDF) <http://espressif.com/sites/default/files/documentation/eco_and_workarounds_for_bugs_in_esp32_en.pdf>
-   Modules and Boards <modules-and-boards>
-   
+   技术参考手册 (PDF) <http://espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_cn.pdf>
+   PSRAM 技术规格书 (PDF) <http://espressif.com/sites/default/files/documentation/esp-psram32_datasheet_cn.pdf>
+   技术规格书 (PDF) <http://espressif.com/sites/default/files/documentation/esp32_datasheet_cn.pdf>
+   BUG 描述及解决方法 (PDF) <http://espressif.com/sites/default/files/documentation/eco_and_workarounds_for_bugs_in_esp32_cn.pdf>
+   模块和电路板<modules-and-boards>
+
+ 
