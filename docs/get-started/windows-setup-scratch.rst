@@ -1,15 +1,15 @@
 ************************************
-Setup Windows Toolchain from Scratch
+从头开始安装Windows工具链
 ************************************
 
-Setting up the environment gives you some more control over the process, and also provides the information for advanced users to customize the install. The :doc:`pre-built environment <windows-setup>`, addressed to less experienced users, has been prepared by following these steps. 
+设置环境使您可以更好地控制过程，并为高级用户提供信息以自定义安装。针对经验较少的用户:doc:`pre-built environment <windows-setup>`已经准备好了. 
 
-To quickly setup the toolchain in standard way, using prebuild environment, proceed to section :doc:`windows-setup`.
+要以标准方式快速设置工具链，请使用预建环境，请参见 :doc:`windows-setup`.
 
 
 .. _configure-windows-toolchain-from-scratch:
 
-Configure Toolchain & Environment from Scratch
+从零开始配置工具链和环境
 ==============================================
 
 This process involves installing MSYS2_, then installing the MSYS2_ and Python packages which ESP-IDF uses, and finally downloading and installing the Xtensa toolchain.
