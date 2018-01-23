@@ -22,11 +22,13 @@ Setting DAC channel 1 (GPIO 25) voltage to approx 0.78 of VDD_A voltage (VDD * 2
 
   ...
 
-      dac_out_voltage(DAC_CHANNEL_1, 200);
+      dac_output_enable(DAC_CHANNEL_1);
+      dac_output_voltage(DAC_CHANNEL_1, 200);
 
 API 参考手册
 -------------
 
+<<<<<<< HEAD
 头文件
 ^^^^^^^^^^^^
 
@@ -41,5 +43,16 @@ API 参考手册
 ^^^^^^^^^
 
   .. doxygenfunction:: dac_out_voltage
+=======
+.. include:: /_build/inc/dac.inc
 
+GPIO Lookup Macros
+^^^^^^^^^^^^^^^^^^
+Some useful macros can be used to specified the GPIO number of a DAC channel, or vice versa.
+e.g.
+>>>>>>> master
 
+1. ``DAC_CHANNEL_1_GPIO_NUM`` is the GPIO number of channel 1 (25);
+2. ``DAC_GPIO26_CHANNEL`` is the channel number of GPIO 26 (channel 2).
+
+.. include:: /_build/inc/dac_channel.inc

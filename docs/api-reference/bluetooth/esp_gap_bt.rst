@@ -13,6 +13,7 @@
 
 .. _Instructions: ../template.html
 
+<<<<<<< HEAD
 
 API 参考手册
 -------------
@@ -44,4 +45,10 @@ API 参考手册
 ^^^^^^^^^
 
 .. doxygenfunction:: esp_bt_gap_set_scan_mode
+=======
+API Reference
+-------------
+
+.. include:: /_build/inc/esp_gap_bt_api.inc
+>>>>>>> master
 

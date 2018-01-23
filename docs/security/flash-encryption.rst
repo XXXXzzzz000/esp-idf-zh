@@ -373,7 +373,11 @@ Flash 加密算法
 
 - AES 算法被用于逆向 falsh 加密，因此 flash 加密的加密操作就是 AES 的解密，解密操作就是 AES 加密。这样做是性能的原因，且不会改变算法的性能。
 
+<<<<<<< HEAD
 - 主 flash 加密密钥存储在 efuse (BLK2) 中，且默认具有写保护和软件读保护。
+=======
+- The main flash encryption key is stored in efuse (BLOCK1) and by default is protected from further writes or software readout.
+>>>>>>> master
 
 - 每 32 字节块（两个相连的 16 字节 AES 块）使用一个唯一的密钥进行加密。该密钥由 efuse 中的主 flash 加密密钥推断（与 flash 中该块的偏移量异或，这个偏移量又叫做 "密钥调整值"）而来。
 

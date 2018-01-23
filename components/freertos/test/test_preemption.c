@@ -66,12 +66,13 @@ TEST_CASE("Yield from lower priority task, same CPU", "[freertos]")
         printf("Yielding from lower priority task took %u cycles\n", delta);
         TEST_ASSERT(delta < 10000);
 
-        vQueueDelete(queue);
         vTaskDelete(sender_task);
+        vQueueDelete(queue);
     }
 }
 
 
+#if portNUM_PROCESSORS == 2
 TEST_CASE("Yield from lower priority task, other CPU", "[freertos]")
 {
     uint32_t trigger_ccount, yield_ccount, now_ccount, delta;
@@ -106,3 +107,4 @@ TEST_CASE("Yield from lower priority task, other CPU", "[freertos]")
         vTaskDelete(sender_task);
     }
 }
+#endif // portNUM_PROCESSORS == 2

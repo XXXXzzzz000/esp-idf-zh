@@ -18,6 +18,7 @@
 #include "esp_vfs.h"
 #include "esp_vfs_fat.h"
 #include "driver/sdmmc_host.h"
+#include "driver/sdspi_host.h"
 #include "sdmmc_cmd.h"
 #include "diskio.h"
 
@@ -28,8 +29,8 @@ static char * s_base_path = NULL;
 
 esp_err_t esp_vfs_fat_sdmmc_mount(const char* base_path,
     const sdmmc_host_t* host_config,
-    const sdmmc_slot_config_t* slot_config,
-    const esp_vfs_fat_sdmmc_mount_config_t* mount_config,
+    const void* slot_config,
+    const esp_vfs_fat_mount_config_t* mount_config,
     sdmmc_card_t** out_card)
 {
     const size_t workbuf_size = 4096;
@@ -52,19 +53,29 @@ esp_err_t esp_vfs_fat_sdmmc_mount(const char* base_path,
         ESP_LOGD(TAG, "could not copy base_path");
         return ESP_ERR_NO_MEM;
     }
-
-    // enable SDMMC
-    sdmmc_host_init();
-
-    // enable card slot
-    esp_err_t err = sdmmc_host_init_slot(host_config->slot, slot_config);
-    if (err != ESP_OK) {
-        return err;
-    }
-
+    esp_err_t err = ESP_OK;
     s_card = malloc(sizeof(sdmmc_card_t));
     if (s_card == NULL) {
         err = ESP_ERR_NO_MEM;
+        goto fail;
+    }
+
+    err = (*host_config->init)();
+    if (err != ESP_OK) {
+        ESP_LOGD(TAG, "host init returned rc=0x%x", err);
+        goto fail;
+    }
+
+    // configure SD slot
+    if (host_config->flags == SDMMC_HOST_FLAG_SPI) {
+        err = sdspi_host_init_slot(host_config->slot,
+                (const sdspi_slot_config_t*) slot_config);
+    } else {
+        err = sdmmc_host_init_slot(host_config->slot,
+                (const sdmmc_slot_config_t*) slot_config);
+    }
+    if (err != ESP_OK) {
+        ESP_LOGD(TAG, "slot_config returned rc=0x%x", err);
         goto fail;
     }
 
@@ -80,6 +91,7 @@ esp_err_t esp_vfs_fat_sdmmc_mount(const char* base_path,
 
     ff_diskio_register_sdmmc(pdrv, s_card);
     s_pdrv = pdrv;
+    ESP_LOGD(TAG, "using pdrv=%i", pdrv);
     char drv[3] = {(char)('0' + pdrv), ':', 0};
 
     // connect FATFS to VFS
@@ -109,13 +121,14 @@ esp_err_t esp_vfs_fat_sdmmc_mount(const char* base_path,
             goto fail;
         }
         ESP_LOGW(TAG, "formatting card");
-        res = f_mkfs("", FM_ANY, s_card->csd.sector_size, workbuf, workbuf_size);
+        res = f_mkfs(drv, FM_ANY, s_card->csd.sector_size, workbuf, workbuf_size);
         if (res != FR_OK) {
             err = ESP_FAIL;
             ESP_LOGD(TAG, "f_mkfs failed (%d)", res);
             goto fail;
         }
         free(workbuf);
+        workbuf = NULL;
         ESP_LOGW(TAG, "mounting again");
         res = f_mount(fs, drv, 0);
         if (res != FR_OK) {
@@ -127,7 +140,7 @@ esp_err_t esp_vfs_fat_sdmmc_mount(const char* base_path,
     return ESP_OK;
 
 fail:
-    sdmmc_host_deinit();
+    host_config->deinit();
     free(workbuf);
     if (fs) {
         f_mount(NULL, drv, 0);
@@ -148,10 +161,11 @@ esp_err_t esp_vfs_fat_sdmmc_unmount()
     char drv[3] = {(char)('0' + s_pdrv), ':', 0};
     f_mount(0, drv, 0);
     // release SD driver
+    esp_err_t (*host_deinit)() = s_card->host.deinit;
     ff_diskio_unregister(s_pdrv);
     free(s_card);
     s_card = NULL;
-    sdmmc_host_deinit();
+    (*host_deinit)();
     esp_err_t err = esp_vfs_fat_unregister_path(s_base_path);
     free(s_base_path);
     s_base_path = NULL;

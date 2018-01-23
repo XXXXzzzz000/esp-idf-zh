@@ -7,6 +7,7 @@
 - :doc:`空中升级（OTA）API <../system/ota>` 提供了更新存储在 flash 中的应用程序的顶层 API。
 - :doc:`非易变存储器(NVS) API <nvs_flash>` 提供了在 SPI flash 中存储小数据项的结构化 API。
 
+<<<<<<< HEAD
 API 参考手册
 -------------
 
@@ -73,6 +74,8 @@ API 参考手册
 .. doxygenfunction:: esp_partition_erase_range
 .. doxygenfunction:: esp_partition_mmap
 .. doxygenfunction:: esp_flash_encryption_enabled
+=======
+>>>>>>> master
 
 .. _spi-flash-implementation-details:
 
@@ -104,3 +107,20 @@ Additionally, all API functions are protected with a mutex (s_flash_op_mutex).
 
 In a single core environment (CONFIG_FREERTOS_UNICORE enabled), we simply
 disable both caches, no inter-CPU communication takes place.
+
+API Reference - SPI Flash
+-------------------------
+
+.. include:: /_build/inc/esp_spi_flash.inc
+
+API Reference - Partition Table
+-------------------------------
+
+.. include:: /_build/inc/esp_partition.inc
+
+API Reference - Flash Encrypt
+-----------------------------
+
+.. include:: /_build/inc/esp_flash_encrypt.inc
+
+

@@ -95,22 +95,10 @@ void emac_reset(void)
 void emac_enable_clk(bool enable)
 {
     if (enable == true) {
-        REG_SET_BIT(EMAC_CLK_EN_REG, EMAC_CLK_EN);
+        DPORT_REG_SET_BIT(EMAC_CLK_EN_REG, EMAC_CLK_EN);
     } else {
-        REG_CLR_BIT(EMAC_CLK_EN_REG, EMAC_CLK_EN);
+        DPORT_REG_CLR_BIT(EMAC_CLK_EN_REG, EMAC_CLK_EN);
     }
-}
-
-void emac_set_clk_mii(void)
-{
-    //select ex clock source
-    REG_SET_BIT(EMAC_EX_CLK_CTRL_REG, EMAC_EX_EXT_OSC_EN);
-    //ex clk enable
-    REG_SET_BIT(EMAC_EX_OSCCLK_CONF_REG, EMAC_EX_OSC_CLK_SEL);
-
-    //set mii mode rx/tx clk enable
-    REG_SET_BIT(EMAC_EX_CLK_CTRL_REG, EMAC_EX_MII_CLK_RX_EN);
-    REG_SET_BIT(EMAC_EX_CLK_CTRL_REG, EMAC_EX_MII_CLK_TX_EN);
 }
 
 void emac_dma_init(void)
@@ -133,12 +121,4 @@ void emac_mac_init(void)
     REG_SET_BIT(EMAC_GMACCONFIG_REG, EMAC_GMACMIIGMII);
     REG_CLR_BIT(EMAC_GMACCONFIG_REG, EMAC_GMACFESPEED);
     REG_SET_BIT(EMAC_GMACFRAMEFILTER_REG, EMAC_PROMISCUOUS_MODE);
-}
-
-void emac_set_clk_rmii(void)
-{
-    //select ex clock source
-    REG_SET_BIT(EMAC_EX_CLK_CTRL_REG, EMAC_EX_EXT_OSC_EN);
-    //ex clk enable
-    REG_SET_BIT(EMAC_EX_OSCCLK_CONF_REG, EMAC_EX_OSC_CLK_SEL);
 }

@@ -11,6 +11,7 @@ GAP API
 应用程序示例
 -------------------
 
+<<<<<<< HEAD
 请检查 ESP-IDF 示例中的 :example:`bluetooth` 文件夹，它包含如下示例：
 
 :example:`bluetooth/gatt_server`, :example:`bluetooth/gatt_client` 
@@ -185,4 +186,14 @@ API 参考手册
 .. doxygenfunction:: esp_ble_set_encryption
 .. doxygenfunction:: esp_ble_passkey_reply
 .. doxygenfunction:: esp_ble_confirm_reply
+=======
+Check :example:`bluetooth` folder in ESP-IDF examples, which contains the following applications:
+
+* The two demos use different GAP APIs, such like advertising, scan, set device name and others - :example:`bluetooth/gatt_server`, :example:`bluetooth/gatt_client`
+
+API Reference
+-------------
+
+.. include:: /_build/inc/esp_gap_ble_api.inc
+>>>>>>> master
 

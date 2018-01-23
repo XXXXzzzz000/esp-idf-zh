@@ -6,7 +6,11 @@
 
 日志库有两种方式管理日志的可见性：编译时和运行时。编译时是通过配置菜单实现的；运行时是通过函数 ``esp_log_level_set`` 实现的。
 
+<<<<<<< HEAD
 在编译时，日志的过滤是通过配置菜单的宏 ``CONFIG_LOG_DEFAULT_LEVEL`` 完成的。所有日志级别大于 ``CONFIG_LOG_DEFAULT_LEVEL`` 的语句都会被预处理器移除。
+=======
+At compile time, filtering is done using ``CONFIG_LOG_DEFAULT_LEVEL`` macro, set via menuconfig. All logging statements for levels higher than ``CONFIG_LOG_DEFAULT_LEVEL`` will be removed by the preprocessor.
+>>>>>>> master
 
 在运行时，级别在 ``CONFIG_LOG_DEFAULT_LEVEL`` 以下的日志默认都被使能。函数 ``esp_log_level_set`` 可以用于设置每个模块的日志级别。模块通过它们的标签（tags）进行标识。标签是人类可识别的以 '\0' 作为结尾的字符串。
 
@@ -33,7 +37,11 @@
 * ``ESP_LOGD`` - 调试/debug
 * ``ESP_LOGV`` - 啰嗦/verbose
 
+<<<<<<< HEAD
 此外，上面的每一种宏还存在一种 _EARLY_ 变种，例如 ``ESP_EARLY_LOGE``。这些变种可以运行在启动代码中，在堆分配器和 syscall 被初始化之前。在编译 bootloader 时，常规的宏 ``ESP_LOGx`` 将会退化为对应的宏 ``ESP_EARLY_LOGx``。因此，需要明确使用 ``ESP_EARLY_LOGx`` 的地方是早起的启动代码，例如堆分配器的初始化代码。
+=======
+Additionally there is an _EARLY_ variant for each of these macros (e.g. ``ESP_EARLY_LOGE``). These variants can run in startup code, before heap allocator and syscalls have been initialized. When compiling bootloader, normal ``ESP_LOGx`` macros fall back to the same implementation as ``ESP_EARLY_LOGx`` macros. So the only place where ``ESP_EARLY_LOGx`` have to be used explicitly is the early startup code, such as heap allocator initialization code.
+>>>>>>> master
 
 
 （注意，如果我们在 ROM 中有 ``ets_vprintf`` 函数，则不需要进行这样的区分，可以直接将 _EARLY_ 版的宏切换为普通版的宏。不幸的是，ROM 中的 ``ets_vprintf`` 会被编译器内链为 ``ets_printf``，因此在外部不可访问）
@@ -63,6 +71,7 @@
 通过 JTAG 将日志输出到主机
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
+<<<<<<< HEAD
 默认情况下，日志库会使用类 vprintf 函数将格式化消息输出到专用的 UART 中。通常，这会涉及到以下步骤：
 
 1. 解释格式化字符串，以获取每个参数的类型。
@@ -192,4 +201,7 @@ OpenOCD 应用程序跟踪命令的选项
       - 显示本帮助信息并退出
     * - --no-errors, -n
       - 不打印错误
+=======
+By default logging library uses vprintf-like function to write formatted output to dedicated UART. With calling a simple API, all log output my be routed to JTAG instead, and make the logging several times faster. For details please refer to section :ref:`app_trace-logging-to-host`.
+>>>>>>> master
 

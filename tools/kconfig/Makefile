@@ -23,6 +23,22 @@ CFLAGS :=
 CPPFLAGS :=
 LDFLAGS :=
 
+# Workaround for a bug on Windows if the mingw32 host compilers
+# are installed in addition to the MSYS ones. The kconfig tools
+# need to be compiled using the MSYS compiler.
+#
+# See https://github.com/espressif/esp-idf/issues/1296
+ifdef MSYSTEM
+ifeq ("$(MSYSTEM)", "MINGW32")
+ifeq ("$(CC)", "cc")
+CC := /usr/bin/gcc
+endif
+ifeq ("$(LD)", "ld")
+LD := /usr/bin/ld
+endif
+endif # MING32
+endif # MSYSTEM
+
 default: mconf conf
 
 xconfig: qconf
@@ -145,7 +161,7 @@ check-lxdialog  := lxdialog/check-lxdialog.sh
 # Use recursively expanded variables so we do not call gcc unless
 # we really need to do so. (Do not call gcc as part of make mrproper)
 CFLAGS += $(shell $(CONFIG_SHELL) $(check-lxdialog) -ccflags) \
-                    -DLOCALE
+                    -DLOCALE -MD
 
 # ===========================================================================
 # Shared Makefile for the various kconfig executables:
@@ -173,9 +189,12 @@ gconf-objs	:= gconf.o zconf.tab.o
 
 hostprogs-y := conf nconf mconf kxgettext qconf gconf
 
+all-objs := $(conf-objs) $(mconf-objs) $(lxdialog)
+all-deps := $(all-objs:.o=.d)
+
 clean-files	:= qconf.moc .tmp_qtcheck .tmp_gtkcheck
 clean-files	+= zconf.tab.c zconf.lex.c zconf.hash.c gconf.glade.h
-clean-files += $(conf-objs) $(mconf-objs) conf mconf $(lxdialog)
+clean-files += $(all-objs) $(all-deps) conf mconf
 
 # Check that we have the required ncurses stuff installed for lxdialog (menuconfig)
 PHONY += dochecklxdialog
@@ -307,5 +326,8 @@ zconf.hash.c: zconf.gperf
 zconf.tab.c: zconf.y
 	bison -t -l -p zconf -o zconf.tab.c zconf.y
 
-clean: 
+clean:
 	rm -f $(clean-files)
+
+-include $(all-deps)
+

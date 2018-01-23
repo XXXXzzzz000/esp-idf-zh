@@ -1,8 +1,13 @@
 空中升级(OTA)
 ==========================
 
+<<<<<<< HEAD
 OTA 过程概述
 ^^^^^^^^^^^^^^^^^^^^
+=======
+OTA Process Overview
+--------------------
+>>>>>>> master
 
 OTA 升级机制允许常规固件在运行时基于它所接收的数据对设备进行升级（通过 WiFI 或者蓝牙）。
 
@@ -13,8 +18,13 @@ OTA 会将新的 app 固件镜像写到当前未用于启动程序的那个 OTA 
 
 .. _ota_data_partition:
 
+<<<<<<< HEAD
 OTA 数据分区
 ^^^^^^^^^^^^^^^^^^
+=======
+OTA Data Partition
+------------------
+>>>>>>> master
 
 使用 OTA 功能的产品必须在 :doc:`Partition Table <../../api-guides/partition-tables>` 中包含一个 OTA 数据分区。
 
@@ -38,11 +48,15 @@ See Also
 API 参考手册
 -------------
 
+<<<<<<< HEAD
 头文件
 ^^^^^^^^^^^^
+=======
+.. include:: /_build/inc/esp_ota_ops.inc
+>>>>>>> master
 
-  * :component_file:`app_update/include/esp_ota_ops.h`
 
+<<<<<<< HEAD
 宏
 ^^^^^^
 
@@ -67,3 +81,6 @@ API 参考手册
 .. doxygenfunction:: esp_ota_set_boot_partition
 .. doxygenfunction:: esp_ota_get_boot_partition
 .. doxygenfunction:: esp_ota_get_next_update_partition
+=======
+
+>>>>>>> master

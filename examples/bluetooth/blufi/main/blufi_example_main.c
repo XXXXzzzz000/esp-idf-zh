@@ -1,16 +1,10 @@
-// Copyright 2015-2016 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+/*
+   This example code is in the Public Domain (or CC0 licensed, at your option.)
 
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+   Unless required by applicable law or agreed to in writing, this
+   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+   CONDITIONS OF ANY KIND, either express or implied.
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,7 +17,7 @@
 #include "esp_event_loop.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-#include "bt.h"
+#include "esp_bt.h"
 
 #include "esp_blufi_api.h"
 #include "esp_bt_defs.h"
@@ -88,6 +82,9 @@ static uint8_t gl_sta_bssid[6];
 static uint8_t gl_sta_ssid[32];
 static int gl_sta_ssid_len;
 
+/* connect infor*/
+static uint8_t server_if;
+static uint16_t conn_id;
 static esp_err_t example_net_event_handler(void *ctx, system_event_t *event)
 {
     wifi_mode_t mode;
@@ -136,6 +133,38 @@ static esp_err_t example_net_event_handler(void *ctx, system_event_t *event)
             esp_blufi_send_wifi_conn_report(mode, ESP_BLUFI_STA_CONN_FAIL, 0, NULL);
         }
         break;
+    case SYSTEM_EVENT_SCAN_DONE: {
+        uint16_t apCount = 0;
+        esp_wifi_scan_get_ap_num(&apCount);
+        if (apCount == 0) {
+            BLUFI_INFO("Nothing AP found");
+            break;
+        }
+        wifi_ap_record_t *ap_list = (wifi_ap_record_t *)malloc(sizeof(wifi_ap_record_t) * apCount);
+        if (!ap_list) {
+            BLUFI_ERROR("malloc error, ap_list is NULL");
+            break;
+        }
+        ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&apCount, ap_list));
+        esp_blufi_ap_record_t * blufi_ap_list = (esp_blufi_ap_record_t *)malloc(apCount * sizeof(esp_blufi_ap_record_t));
+        if (!blufi_ap_list) {
+            if (ap_list) {
+                free(ap_list);
+            }
+            BLUFI_ERROR("malloc error, blufi_ap_list is NULL");
+            break;
+        }
+        for (int i = 0; i < apCount; ++i)
+        {
+            blufi_ap_list[i].rssi = ap_list[i].rssi;
+            memcpy(blufi_ap_list[i].ssid, ap_list[i].ssid, sizeof(ap_list[i].ssid));
+        }
+        esp_blufi_send_wifi_list(apCount, blufi_ap_list);
+        esp_wifi_scan_stop();
+        free(ap_list);
+        free(blufi_ap_list);
+        break;
+    }
     default:
         break;
     }
@@ -174,16 +203,18 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
         esp_ble_gap_config_adv_data(&example_adv_data);
         break;
     case ESP_BLUFI_EVENT_DEINIT_FINISH:
-        BLUFI_INFO("BLUFI init finish\n");
+        BLUFI_INFO("BLUFI deinit finish\n");
         break;
     case ESP_BLUFI_EVENT_BLE_CONNECT:
         BLUFI_INFO("BLUFI ble connect\n");
+        server_if = param->connect.server_if;
+        conn_id = param->connect.conn_id;
         esp_ble_gap_stop_advertising();
-        blufi_security_deinit();
         blufi_security_init();
         break;
     case ESP_BLUFI_EVENT_BLE_DISCONNECT:
         BLUFI_INFO("BLUFI ble disconnect\n");
+        blufi_security_deinit();
         esp_ble_gap_start_advertising(&example_adv_params);
         break;
     case ESP_BLUFI_EVENT_SET_WIFI_OPMODE:
@@ -197,6 +228,10 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
     case ESP_BLUFI_EVENT_REQ_DISCONNECT_FROM_AP:
         BLUFI_INFO("BLUFI requset wifi disconnect from AP\n");
         esp_wifi_disconnect();
+        break;
+    case ESP_BLUFI_EVENT_REPORT_ERROR:
+        BLUFI_ERROR("BLUFI report error, error code %d\n", param->report_error.state);
+        esp_blufi_send_error_info(param->report_error.state);
         break;
     case ESP_BLUFI_EVENT_GET_WIFI_STATUS: {
         wifi_mode_t mode;
@@ -218,6 +253,10 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
 
         break;
     }
+    case ESP_BLUFI_EVENT_RECV_SLAVE_DISCONNECT_BLE:
+        BLUFI_INFO("blufi close a gatt connection");
+        esp_blufi_close(server_if, conn_id);
+        break;
     case ESP_BLUFI_EVENT_DEAUTHENTICATE_STA:
         /* TODO */
         break;
@@ -274,6 +313,16 @@ static void example_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_para
         esp_wifi_set_config(WIFI_IF_AP, &ap_config);
         BLUFI_INFO("Recv SOFTAP CHANNEL %d\n", ap_config.ap.channel);
         break;
+    case ESP_BLUFI_EVENT_GET_WIFI_LIST:{
+        wifi_scan_config_t scanConf = {
+            .ssid = NULL,
+            .bssid = NULL,
+            .channel = 0,
+            .show_hidden = false
+        };
+        ESP_ERROR_CHECK(esp_wifi_scan_start(&scanConf, true));
+        break;
+    }
 	case ESP_BLUFI_EVENT_RECV_USERNAME:
         /* Not handle currently */
         break;
@@ -312,8 +361,17 @@ void app_main()
 {
     esp_err_t ret;
 
-    ESP_ERROR_CHECK( nvs_flash_init() );
+    // Initialize NVS
+    ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK( ret );
+
     initialise_wifi();
+
+    ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
 
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     ret = esp_bt_controller_init(&bt_cfg);
@@ -321,7 +379,7 @@ void app_main()
         BLUFI_ERROR("%s initialize bt controller failed\n", __func__);
     }
 
-    ret = esp_bt_controller_enable(ESP_BT_MODE_BTDM);
+    ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
     if (ret) {
         BLUFI_ERROR("%s enable bt controller failed\n", __func__);
         return;
@@ -343,9 +401,17 @@ void app_main()
 
     BLUFI_INFO("BLUFI VERSION %04x\n", esp_blufi_get_version());
 
-    blufi_security_init();
-    esp_ble_gap_register_callback(example_gap_event_handler);
+    ret = esp_ble_gap_register_callback(example_gap_event_handler);
+    if(ret){
+        BLUFI_ERROR("%s gap register failed, error code = %x\n", __func__, ret);
+        return;
+    }
 
-    esp_blufi_register_callbacks(&example_callbacks);
+    ret = esp_blufi_register_callbacks(&example_callbacks);
+    if(ret){
+        BLUFI_ERROR("%s blufi register failed, error code = %x\n", __func__, ret);
+        return;
+    }
+
     esp_blufi_profile_init();
 }

@@ -4,6 +4,7 @@
 API 参考手册
 -------------
 
+<<<<<<< HEAD
 头文件
 ^^^^^^^^^^^^
 
@@ -23,3 +24,6 @@ API 参考手册
 .. doxygenfunction:: esp_esptouch_set_timeout
 .. doxygenfunction:: esp_smartconfig_set_type
 .. doxygenfunction:: esp_smartconfig_fast_mode
+=======
+.. include:: /_build/inc/esp_smartconfig.inc
+>>>>>>> master

@@ -15,6 +15,7 @@ BT AVRCP API
 
 .. _Instructions: ../template.html
 
+<<<<<<< HEAD
 
 API 参考手册
 -------------
@@ -57,9 +58,11 @@ API 参考手册
 
 函数
 ^^^^^^^^^
+=======
+API Reference
+-------------
 
-.. doxygenfunction:: esp_avrc_ct_register_callback
-.. doxygenfunction:: esp_avrc_ct_init
-.. doxygenfunction:: esp_avrc_ct_deinit
-.. doxygenfunction:: esp_avrc_ct_send_passthrough_cmd
+.. include:: /_build/inc/esp_avrc_api.inc
+>>>>>>> master
+
 

@@ -17,6 +17,7 @@ BT MAIN API
 API 参考手册
 -------------
 
+<<<<<<< HEAD
 头文件
 ^^^^^^^^^^^^
 
@@ -49,4 +50,8 @@ API 参考手册
 .. doxygenfunction:: esp_bluedroid_disable
 .. doxygenfunction:: esp_bluedroid_init
 .. doxygenfunction:: esp_bluedroid_deinit
+=======
+.. include:: /_build/inc/esp_bt_main.inc
+
+>>>>>>> master
 

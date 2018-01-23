@@ -24,7 +24,7 @@
  ******************************************************************************/
 
 #include "bt_target.h"
-#include "gki.h"
+#include "allocator.h"
 #include "hcidefs.h"
 #include "hcimsgs.h"
 #include "hcidefs.h"
@@ -32,6 +32,8 @@
 
 #include <stddef.h>
 #include <string.h>
+
+#define HCI_GET_CMD_BUF(paramlen)       ((BT_HDR *)osi_malloc(HCI_CMD_BUF_SIZE))
 
 #if (defined BLE_INCLUDED) && (BLE_INCLUDED == TRUE)
 
@@ -86,7 +88,6 @@ BOOLEAN btsnd_hcic_ble_write_adv_params (UINT16 adv_int_min, UINT16 adv_int_max,
 {
     BT_HDR *p;
     UINT8 *pp;
-    HCI_TRACE_ERROR("####################adv_type = %d",adv_type);
     if ((p = HCI_GET_CMD_BUF(HCIC_PARAM_SIZE_BLE_WRITE_ADV_PARAMS)) == NULL) {
         return (FALSE);
     }

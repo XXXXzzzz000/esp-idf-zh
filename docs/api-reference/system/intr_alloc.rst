@@ -8,7 +8,15 @@ ESP32 有两个核（core），每个核有 32 个中断。每个中断有一个
 
 驱动程序可以调用 esp_intr_alloc（或 esp_intr_alloc_sintrstatus）为某个外设分配一个中断。它可以通过一个传递给该函数的标志设置所分配中断的类型，指明指定的等级或者触发方法。然后中断分配代码会知道一个可用的中断，使用中断复用矩阵将它与外设挂在一起，并安装驱动程序传递给它的中断 hander 和 ISR。
 
+<<<<<<< HEAD
 该代码有两种处理方式不同的中断：共享中断和非共享中断。二者中最简单的是非共享中断：一个独立的中断会在调用 esp_intr_alloc 时被分配，且该中断仅能用于附着到它上面的外设，仅由一个 ISR 会被调用。共享中断可以被多个外设触发，当附着到它上面的某一个外设发送中断信号时，多个 ISR 都会被调用。因此，共享中断的 ISR 应当检查它们所服务的外设的中断状态，以查看是否需要执行任何动作。
+=======
+This code has two different types of interrupts it handles differently: Shared interrupts and non-shared interrupts. The simplest
+of the two are non-shared interrupts: a separate interrupt is allocated per esp_intr_alloc call and this interrupt is solely used for
+the peripheral attached to it, with only one ISR that will get called. Shared interrupts can have multiple peripherals triggering 
+it, with multiple ISRs being called when one of the peripherals attached signals an interrupt. Thus, ISRs that are intended for shared
+interrupts should check the interrupt status of the peripheral they service in order to see if any action is required.
+>>>>>>> master
 
 非共享中断即可以由电平触发，也可以是边沿触发。共享中断仅能被电平触发（因为使用边沿触发时可能错过中断）。（它内部的逻辑是这样的：设备 A 和设备 B 共享一个中断。设备 B 发出一个中断信号。中断线为高。ISR handler 调用设备 A 的代码 -> 什么也不做。ISR handler 调用设备 B 的代码，但是在此期间，设备 A 发送了一个信号。设备 B 完成处理，清除设备 B 的中断，退出中断代码。现在，设备 A 的中断处于 pending 状态，但是由于中断线没有变为低（即使设备 B 的中断被清除了，设备 A 仍然保持为高），中断永远不会被服务）
 
@@ -60,12 +68,30 @@ IRAM-Safe 中断 Handler
 
 更多细节请cake :ref:`SPI flash API 文档 <iram-safe-interrupt-handlers>`。
 
+<<<<<<< HEAD
 应用程序示例
 -------------------
+=======
+Multiple Handlers Sharing A Source
+----------------------------------
+
+Several handlers can be assigned to a same source, given that all handlers are allocated using the ``ESP_INTR_FLAG_SHARED`` flag.
+They'll be all allocated to the interrupt, which the source is attached to, and called sequentially when the source is active.
+The handlers can be disabled and freed individually. The source is attached to the interrupt (enabled), if one or more handlers are enabled, otherwise detached.
+A handler will never be called when disabled, while **its source may still be triggered** if any one of its handler enabled. 
+
+Sources attached to non-shared interrupt do not support this feature.
+
+Though the framework support this feature, you have to use it *very carefully*. There usually exist 2 ways to stop a interrupt from being triggered: *disable the sourse* or *mask peripheral interrupt status*.
+IDF only handles the enabling and disabling of the source itself, leaving status and mask bits to be handled by users. **Status bits should always be masked before the handler responsible for it is disabled,
+or the status should be handled in other enabled interrupt properly**. You may leave some status bits unhandled if you just disable one of all the handlers without mask the status bits, which causes the interrupt being triggered infinitely,
+and finally a system crash.
+>>>>>>> master
 
 API 参考手册
 -------------
 
+<<<<<<< HEAD
 头文件
 ^^^^^^^^^^^^
 
@@ -103,3 +129,8 @@ API 参考手册
 .. doxygenfunction:: esp_intr_enable
 .. doxygenfunction:: esp_intr_noniram_disable
 .. doxygenfunction:: esp_intr_noniram_enable
+=======
+.. include:: /_build/inc/esp_intr_alloc.inc
+
+
+>>>>>>> master

@@ -46,6 +46,7 @@ ESP-IDF 编程指导(中文版)
 .. toctree::
    :hidden:
 
+<<<<<<< HEAD
    快速入门 - Get Started  <get-started/index> 
    API 参考手册 - API Reference <api-reference/index>
    硬件参考手册 - H/W Reference <hw-reference/index>
@@ -54,5 +55,16 @@ ESP-IDF 编程指导(中文版)
    资源 - Resources <resources>
    版权 - Copyrights <COPYRIGHT>
    关于 - About <about>
+=======
+   Get Started <get-started/index>
+   快速入门 <get-started/index-cn> 
+   API Reference <api-reference/index>
+   H/W Reference <hw-reference/index>
+   API Guides <api-guides/index>
+   Contribute <contribute/index>
+   Resources <resources>
+   Copyrights <COPYRIGHT>
+   About <about>
+>>>>>>> master
 
 * :ref:`genindex`

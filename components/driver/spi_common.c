@@ -31,7 +31,7 @@
 #include "rom/lldesc.h"
 #include "driver/gpio.h"
 #include "driver/periph_ctrl.h"
-#include "esp_heap_alloc_caps.h"
+#include "esp_heap_caps.h"
 
 #include "driver/spi_common.h"
 
@@ -150,8 +150,13 @@ static const spi_signal_conn_t io_signal[3] = {
     }
 };
 
+#define DMA_CHANNEL_ENABLED(dma_chan)    (BIT(dma_chan-1))
+
 //Periph 1 is 'claimed' by SPI flash code.
 static bool spi_periph_claimed[3] = {true, false, false};
+static uint8_t spi_dma_chan_enabled = 0;
+static portMUX_TYPE spi_dma_spinlock = portMUX_INITIALIZER_UNLOCKED;
+
 
 //Returns true if this peripheral is successfully claimed, false if otherwise.
 bool spicommon_periph_claim(spi_host_device_t host)
@@ -178,6 +183,39 @@ int spicommon_irqsource_for_host(spi_host_device_t host)
 spi_dev_t *spicommon_hw_for_host(spi_host_device_t host)
 {
     return io_signal[host].hw;
+}
+
+bool spicommon_dma_chan_claim (int dma_chan)
+{
+    bool ret = false;
+    assert( dma_chan == 1 || dma_chan == 2 );
+
+    portENTER_CRITICAL(&spi_dma_spinlock);
+    if ( !(spi_dma_chan_enabled & DMA_CHANNEL_ENABLED(dma_chan)) ) {
+        // get the channel only when it's not claimed yet.
+        spi_dma_chan_enabled |= DMA_CHANNEL_ENABLED(dma_chan);
+        ret = true;
+    }
+    periph_module_enable( PERIPH_SPI_DMA_MODULE );
+    portEXIT_CRITICAL(&spi_dma_spinlock);
+
+    return ret;
+}
+
+bool spicommon_dma_chan_free(int dma_chan)
+{
+    assert( dma_chan == 1 || dma_chan == 2 );
+    assert( spi_dma_chan_enabled & DMA_CHANNEL_ENABLED(dma_chan) );
+
+    portENTER_CRITICAL(&spi_dma_spinlock);
+    spi_dma_chan_enabled &= ~DMA_CHANNEL_ENABLED(dma_chan);
+    if ( spi_dma_chan_enabled == 0 ) {
+        //disable the DMA only when all the channels are freed.
+        periph_module_disable( PERIPH_SPI_DMA_MODULE );
+    }
+    portEXIT_CRITICAL(&spi_dma_spinlock);
+
+    return true;
 }
 
 /*
@@ -208,6 +246,11 @@ esp_err_t spicommon_bus_initialize_io(spi_host_device_t host, const spi_bus_conf
     }
 
     *is_native = native;
+    if ( native ) {
+        ESP_LOGD(SPI_TAG, "SPI%d use native pins.", host );
+    } else {
+        ESP_LOGD(SPI_TAG, "SPI%d use gpio matrix.", host );
+    }
 
     if (native) {
         //All SPI native pin selections resolve to 1, so we put that here instead of trying to figure
@@ -252,7 +295,7 @@ esp_err_t spicommon_bus_initialize_io(spi_host_device_t host, const spi_bus_conf
     }
 
     //Select DMA channel.
-    SET_PERI_REG_BITS(DPORT_SPI_DMA_CHAN_SEL_REG, 3, dma_chan, (host * 2));
+    DPORT_SET_PERI_REG_BITS(DPORT_SPI_DMA_CHAN_SEL_REG, 3, dma_chan, (host * 2));
 
     return ESP_OK;
 }
@@ -350,7 +393,7 @@ bool IRAM_ATTR spicommon_dmaworkaround_req_reset(int dmachan, dmaworkaround_cb_t
     int otherchan = (dmachan == 1) ? 2 : 1;
     bool ret;
     portENTER_CRITICAL(&dmaworkaround_mux);
-    if (dmaworkaround_channels_busy[otherchan]) {
+    if (dmaworkaround_channels_busy[otherchan-1]) {
         //Other channel is busy. Call back when it's done.
         dmaworkaround_cb = cb;
         dmaworkaround_cb_arg = arg;
@@ -358,8 +401,7 @@ bool IRAM_ATTR spicommon_dmaworkaround_req_reset(int dmachan, dmaworkaround_cb_t
         ret = false;
     } else {
         //Reset DMA
-        SET_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_SPI_DMA_RST);
-        CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_SPI_DMA_RST);
+        periph_module_reset( PERIPH_SPI_DMA_MODULE );
         ret = true;
     }
     portEXIT_CRITICAL(&dmaworkaround_mux);
@@ -374,11 +416,10 @@ bool IRAM_ATTR spicommon_dmaworkaround_reset_in_progress()
 void IRAM_ATTR spicommon_dmaworkaround_idle(int dmachan)
 {
     portENTER_CRITICAL(&dmaworkaround_mux);
-    dmaworkaround_channels_busy[dmachan] = 0;
+    dmaworkaround_channels_busy[dmachan-1] = 0;
     if (dmaworkaround_waiting_for_chan == dmachan) {
         //Reset DMA
-        SET_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_SPI_DMA_RST);
-        CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_SPI_DMA_RST);
+        periph_module_reset( PERIPH_SPI_DMA_MODULE );
         dmaworkaround_waiting_for_chan = 0;
         //Call callback
         dmaworkaround_cb(dmaworkaround_cb_arg);
@@ -390,7 +431,7 @@ void IRAM_ATTR spicommon_dmaworkaround_idle(int dmachan)
 void IRAM_ATTR spicommon_dmaworkaround_transfer_active(int dmachan)
 {
     portENTER_CRITICAL(&dmaworkaround_mux);
-    dmaworkaround_channels_busy[dmachan] = 1;
+    dmaworkaround_channels_busy[dmachan-1] = 1;
     portEXIT_CRITICAL(&dmaworkaround_mux);
 }
 

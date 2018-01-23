@@ -17,6 +17,7 @@ BT GENERIC DEFINES
 API 参考手册
 -------------
 
+<<<<<<< HEAD
 头文件
 ^^^^^^^^^^^^
 
@@ -62,4 +63,7 @@ API 参考手册
 函数
 ^^^^^^^^^
 
+=======
+.. include:: /_build/inc/esp_bt_defs.inc
+>>>>>>> master
 

@@ -56,7 +56,7 @@ idf_monitor 将会增加 dump ::
 
 对于上面到结果，idf_monitor 其实在后台运行了下面的命令来对每个地址进行解码的 ::
 
-  xtensa-esp32-elf-addr2line -pfia -e build/PROJECT.elf ADDRESS
+  xtensa-esp32-elf-addr2line -pfiaC -e build/PROJECT.elf ADDRESS
 
 为 GDBStub 加载 GDB
 ======================
@@ -65,7 +65,11 @@ idf_monitor 将会增加 dump ::
 
 可选地，panic handler 可以被配置为去运行一个串行 “gdb stub”。“gdb stub” 可以与 gdb_ 调试程序通信，从而对内存进行读取，对变量和栈帧进行检查等等。这种功能虽然不如 JTAG 那样强大，但是不需要额外的硬件即可完成。
 
+<<<<<<< HEAD
 要使能 gdbstub，请运行 ``make menuconfig`` 并进入 ``Component config`` -> ``ESP32-specific`` -> ``Panic handler behaviour``，然后将其设为 ``Invoke GDBStub``。
+=======
+To enable the gdbstub, run ``make menuconfig`` and set :ref:`CONFIG_ESP32_PANIC` option to ``Invoke GDBStub``.
+>>>>>>> master
 
 如果该选项被使能且 idf_monitor 能看到 gdb stub，则它会暂停监视串口并使用正确的参数运行 GDB。当 GDB 退出后，板子会通过 RST 串行线复位（如果连接了该线）。
 
@@ -85,6 +89,22 @@ idf_monitor 将会增加 dump ::
 ===========
 
 键盘快捷键 ``Ctrl-T Ctrl-R`` 会通过 RTS 线对开发板进行复位（如果连接了该线）。
+
+
+Pause the Application
+=====================
+
+The keyboard shortcut ``Ctrl-T Ctrl-P`` will reset the target into bootloader, so that the board will run nothing. This is
+useful when you want to wait for another device to startup. Then shortcut ``Ctrl-T Ctrl-R`` can be used to restart the
+application.
+
+
+Toggle Output Display
+=====================
+
+Sometimes you may want to stop new output printed to screen, to see the log before. The keyboard shortcut ``Ctrl-T Ctrl-Y`` will
+toggle the display (discard all serial data when the display is off) so that you can stop to see the log, and revert
+again quickly without quitting the monitor.
 
 
 Simple Monitor
@@ -111,4 +131,4 @@ idf_monitor 的已知问题
 .. _addr2line: https://sourceware.org/binutils/docs/binutils/addr2line.html
 .. _gdb: https://sourceware.org/gdb/download/onlinedocs/
 .. _pySerial: https://github.com/pyserial/pyserial
-.. _miniterm: http://pyserial.readthedocs.org/en/latest/tools.html#module-serial.tools.miniterm
+.. _miniterm: https://pyserial.readthedocs.org/en/latest/tools.html#module-serial.tools.miniterm

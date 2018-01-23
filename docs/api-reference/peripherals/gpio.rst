@@ -16,15 +16,23 @@ There is also separate "RTC GPIO" support, which functions when GPIOs are routed
 
 GPIO output and input interrupt example: :example:`peripherals/gpio`.
 
+<<<<<<< HEAD
 API 参考手册
 -------------
 
 头文件
 ^^^^^^^^^^^^
+=======
+API Reference - Normal GPIO
+---------------------------
 
-  * :component_file:`driver/include/driver/gpio.h`
-  * :component_file:`driver/include/driver/rtc_io.h`
+.. include:: /_build/inc/gpio.inc
+>>>>>>> master
 
+API Reference - RTC GPIO
+------------------------
+
+<<<<<<< HEAD
 宏
 ^^^^^^
 
@@ -189,3 +197,7 @@ RTC GPIO
 .. doxygenfunction:: rtc_gpio_pullup_dis
 .. doxygenfunction:: rtc_gpio_pulldown_dis
 .. doxygenfunction:: rtc_gpio_unhold_all
+=======
+.. include:: /_build/inc/rtc_io.inc
+
+>>>>>>> master

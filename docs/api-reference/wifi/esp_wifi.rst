@@ -1,13 +1,21 @@
 Wi-Fi
 =====
 
+<<<<<<< HEAD
 概述
 --------
+=======
+Introduction
+------------
+>>>>>>> master
 
-`Instructions`_
+The WiFi libraries provide support for configuring and monitoring the ESP32 WiFi networking functionality. This includes configuration for:
 
-.. _Instructions: ../template.html
+- Station mode (aka STA mode or WiFi client mode). ESP32 connects to an access point.
+- AP mode (aka Soft-AP mode or Access Point mode). Stations connect to the ESP32.
+- Combined AP-STA mode (ESP32 is concurrently an access point and a station connected to another access point).
 
+<<<<<<< HEAD
 应用程序示例
 -------------------
 
@@ -23,10 +31,23 @@ API 参考手册
 
 宏
 ------
+=======
+- Various security modes for the above (WPA, WPA2, WEP, etc.)
+- Scanning for access points (active & passive scanning).
+- Promiscuous mode monitoring of IEEE802.11 WiFi packets.
 
-.. doxygendefine:: WIFI_INIT_CONFIG_DEFAULT
+Application Examples
+--------------------
+
+See :example:`wifi` directory of ESP-IDF examples that contains the following applications:
+
+* Simple application showing how to connect ESP32 module to an Access Point - `esp-idf-template <https://github.com/espressif/esp-idf-template>`_.
+>>>>>>> master
+
+* Using power save mode of Wi-Fi - :example:`wifi/power_save`.
 
 
+<<<<<<< HEAD
 类型定义
 ----------------
 
@@ -35,44 +56,12 @@ API 参考手册
 
 函数
 ---------
+=======
+API Reference
+-------------
+>>>>>>> master
 
-.. doxygenfunction:: esp_wifi_init
-.. doxygenfunction:: esp_wifi_deinit
-.. doxygenfunction:: esp_wifi_set_mode
-.. doxygenfunction:: esp_wifi_get_mode
-.. doxygenfunction:: esp_wifi_start
-.. doxygenfunction:: esp_wifi_stop
-.. doxygenfunction:: esp_wifi_connect
-.. doxygenfunction:: esp_wifi_disconnect
-.. doxygenfunction:: esp_wifi_clear_fast_connect
-.. doxygenfunction:: esp_wifi_deauth_sta
-.. doxygenfunction:: esp_wifi_scan_start
-.. doxygenfunction:: esp_wifi_scan_stop
-.. doxygenfunction:: esp_wifi_scan_get_ap_num
-.. doxygenfunction:: esp_wifi_scan_get_ap_records
-.. doxygenfunction:: esp_wifi_sta_get_ap_info
-.. doxygenfunction:: esp_wifi_set_ps
-.. doxygenfunction:: esp_wifi_get_ps
-.. doxygenfunction:: esp_wifi_set_protocol
-.. doxygenfunction:: esp_wifi_get_protocol
-.. doxygenfunction:: esp_wifi_set_bandwidth
-.. doxygenfunction:: esp_wifi_get_bandwidth
-.. doxygenfunction:: esp_wifi_set_channel
-.. doxygenfunction:: esp_wifi_get_channel
-.. doxygenfunction:: esp_wifi_set_country
-.. doxygenfunction:: esp_wifi_get_country
-.. doxygenfunction:: esp_wifi_set_mac
-.. doxygenfunction:: esp_wifi_get_mac
-.. doxygenfunction:: esp_wifi_set_promiscuous_rx_cb
-.. doxygenfunction:: esp_wifi_set_promiscuous
-.. doxygenfunction:: esp_wifi_get_promiscuous
-.. doxygenfunction:: esp_wifi_set_config
-.. doxygenfunction:: esp_wifi_get_config
-.. doxygenfunction:: esp_wifi_ap_get_sta_list
-.. doxygenfunction:: esp_wifi_set_storage
-.. doxygenfunction:: esp_wifi_set_auto_connect
-.. doxygenfunction:: esp_wifi_get_auto_connect
-.. doxygenfunction:: esp_wifi_set_vendor_ie
-.. doxygenfunction:: esp_wifi_set_vendor_ie_cb
+.. include:: /_build/inc/esp_wifi.inc
+.. include:: /_build/inc/esp_wifi_types.inc
 
 

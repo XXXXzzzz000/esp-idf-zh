@@ -31,9 +31,11 @@
 #include "bta_av_co.h"
 #include "bta_av_ci.h"
 #include "bta_av_sbc.h"
-#include "btc_media.h"
+#include "btc_a2dp.h"
+#include "btc_a2dp_source.h"
 #include "btc_av_co.h"
 #include "btc_util.h"
+#include "mutex.h"
 
 #if BTC_AV_INCLUDED
 
@@ -513,7 +515,7 @@ UINT8 bta_av_audio_sink_getconfig(tBTA_AV_HNDL hndl, tBTA_AV_CODEC codec_type,
         APPL_TRACE_DEBUG("bta_av_audio_sink_getconfig last SRC reached");
 
         /* Protect access to bta_av_co_cb.codec_cfg */
-        GKI_disable();
+        osi_mutex_global_lock();
 
         /* Find a src that matches the codec config */
         if (bta_av_co_audio_peer_src_supports_codec(p_peer, &index)) {
@@ -545,7 +547,7 @@ UINT8 bta_av_audio_sink_getconfig(tBTA_AV_HNDL hndl, tBTA_AV_CODEC codec_type,
             }
         }
         /* Protect access to bta_av_co_cb.codec_cfg */
-        GKI_enable();
+        osi_mutex_global_unlock();
     }
     return result;
 }
@@ -634,7 +636,7 @@ UINT8 bta_av_co_audio_getconfig(tBTA_AV_HNDL hndl, tBTA_AV_CODEC codec_type,
         APPL_TRACE_DEBUG("bta_av_co_audio_getconfig last sink reached");
 
         /* Protect access to bta_av_co_cb.codec_cfg */
-        GKI_disable();
+        osi_mutex_global_lock();
 
         /* Find a sink that matches the codec config */
         if (bta_av_co_audio_peer_supports_codec(p_peer, &index)) {
@@ -686,7 +688,7 @@ UINT8 bta_av_co_audio_getconfig(tBTA_AV_HNDL hndl, tBTA_AV_CODEC codec_type,
             }
         }
         /* Protect access to bta_av_co_cb.codec_cfg */
-        GKI_enable();
+        osi_mutex_global_unlock();
     }
     return result;
 }
@@ -770,7 +772,7 @@ void bta_av_co_audio_setconfig(tBTA_AV_HNDL hndl, tBTA_AV_CODEC codec_type,
         if (codec_cfg_supported) {
 
             /* Protect access to bta_av_co_cb.codec_cfg */
-            GKI_disable();
+            osi_mutex_global_lock();
 
             /* Check if the configuration matches the current codec config */
             switch (bta_av_co_cb.codec_cfg.id) {
@@ -804,7 +806,7 @@ void bta_av_co_audio_setconfig(tBTA_AV_HNDL hndl, tBTA_AV_CODEC codec_type,
                 break;
             }
             /* Protect access to bta_av_co_cb.codec_cfg */
-            GKI_enable();
+            osi_mutex_global_unlock();
         } else {
             category = AVDT_ASC_CODEC;
             status = A2D_WRONG_CODEC;
@@ -947,18 +949,19 @@ extern void bta_av_co_audio_stop(tBTA_AV_HNDL hndl, tBTA_AV_CODEC codec_type)
  ** Description      This function is called to manage data transfer from
  **                  the audio codec to AVDTP.
  **
- ** Returns          Pointer to the GKI buffer to send, NULL if no buffer to send
+ ** Returns          Pointer to the buffer to send, NULL if no buffer to send
  **
  *******************************************************************************/
 void *bta_av_co_audio_src_data_path(tBTA_AV_CODEC codec_type, UINT32 *p_len,
                                     UINT32 *p_timestamp)
 {
+#if BTC_AV_SRC_INCLUDED
     BT_HDR *p_buf;
     UNUSED(p_len);
 
     FUNC_TRACE();
 
-    p_buf = btc_media_aa_readbuf();
+    p_buf = btc_a2dp_source_audio_readbuf();
     if (p_buf != NULL) {
         switch (codec_type) {
         case BTA_AV_CODEC_SBC:
@@ -991,6 +994,9 @@ void *bta_av_co_audio_src_data_path(tBTA_AV_CODEC codec_type, UINT32 *p_len,
 #endif
     }
     return p_buf;
+#else /* BTC_AV_SRC_INCLUDED */
+    return NULL;
+#endif /* BTC_AV_SRC_INCLUDED */
 }
 
 /*******************************************************************************
@@ -1378,7 +1384,7 @@ static BOOLEAN bta_av_co_audio_media_supports_config(UINT8 codec_type, const UIN
  ** Returns          TRUE if all opened devices support this codec, FALSE otherwise
  **
  *******************************************************************************/
-BOOLEAN bta_av_co_audio_codec_supported(tBTC_STATUS *p_status)
+BOOLEAN bta_av_co_audio_codec_supported(tBTC_AV_STATUS *p_status)
 {
     UINT8 index;
     UINT8 snk_index;
@@ -1448,7 +1454,7 @@ BOOLEAN bta_av_co_audio_codec_supported(tBTC_STATUS *p_status)
         }
     }
 
-    *p_status = BTC_SUCCESS;
+    *p_status = BTC_AV_SUCCESS;
     return TRUE;
 }
 
@@ -1463,7 +1469,7 @@ BOOLEAN bta_av_co_audio_codec_supported(tBTC_STATUS *p_status)
  *******************************************************************************/
 void bta_av_co_audio_codec_reset(void)
 {
-    GKI_disable();
+    osi_mutex_global_lock();
     FUNC_TRACE();
 
     /* Reset the current configuration to SBC */
@@ -1473,7 +1479,7 @@ void bta_av_co_audio_codec_reset(void)
         APPL_TRACE_ERROR("bta_av_co_audio_codec_reset A2D_BldSbcInfo failed");
     }
 
-    GKI_enable();
+    osi_mutex_global_unlock();
 }
 
 /*******************************************************************************
@@ -1487,7 +1493,7 @@ void bta_av_co_audio_codec_reset(void)
  ** Returns          TRUE if successful, FALSE otherwise
  **
  *******************************************************************************/
-BOOLEAN bta_av_co_audio_set_codec(const tBTC_AV_MEDIA_FEEDINGS *p_feeding, tBTC_STATUS *p_status)
+BOOLEAN bta_av_co_audio_set_codec(const tBTC_AV_MEDIA_FEEDINGS *p_feeding, tBTC_AV_STATUS *p_status)
 {
     tA2D_SBC_CIE sbc_config;
     tBTC_AV_CODEC_INFO new_cfg;
@@ -1554,7 +1560,7 @@ BOOLEAN bta_av_co_audio_set_codec(const tBTC_AV_MEDIA_FEEDINGS *p_feeding, tBTC_
 
 
     /* Check all devices support it */
-    *p_status = BTC_SUCCESS;
+    *p_status = BTC_AV_SUCCESS;
     return bta_av_co_audio_codec_supported(p_status);
 }
 
@@ -1580,7 +1586,7 @@ BOOLEAN bta_av_co_audio_get_sbc_config(tA2D_SBC_CIE *p_sbc_config, UINT16 *p_min
     /* Minimum MTU is by default very large */
     *p_minmtu = 0xFFFF;
 
-    GKI_disable();
+    osi_mutex_global_lock();
     if (bta_av_co_cb.codec_cfg.id == BTC_AV_CODEC_SBC) {
         if (A2D_ParsSbcInfo(p_sbc_config, bta_av_co_cb.codec_cfg.info, FALSE) == A2D_SUCCESS) {
             for (index = 0; index < BTA_AV_CO_NUM_ELEMENTS(bta_av_co_cb.peers); index++) {
@@ -1614,7 +1620,7 @@ BOOLEAN bta_av_co_audio_get_sbc_config(tA2D_SBC_CIE *p_sbc_config, UINT16 *p_min
         /* Not SBC, still return the default values */
         *p_sbc_config = btc_av_sbc_default_config;
     }
-    GKI_enable();
+    osi_mutex_global_unlock();
 
     return result;
 }

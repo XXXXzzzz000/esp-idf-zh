@@ -39,7 +39,16 @@
 #include "esp_spi_flash.h"
 #include "esp_cache_err_int.h"
 #include "esp_app_trace.h"
+#include "esp_system.h"
+#if CONFIG_SYSVIEW_ENABLE
+#include "SEGGER_RTT.h"
+#endif
 
+#if CONFIG_ESP32_APPTRACE_ONPANIC_HOST_FLUSH_TMO == -1
+#define APPTRACE_ONPANIC_HOST_FLUSH_TMO   ESP_APPTRACE_TMO_INFINITE
+#else
+#define APPTRACE_ONPANIC_HOST_FLUSH_TMO   (1000*CONFIG_ESP32_APPTRACE_ONPANIC_HOST_FLUSH_TMO)
+#endif
 /*
   Panic handlers; these get called when an unhandled exception occurs or the assembly-level
   task switching / interrupt code runs into an unrecoverable error. The default task stack
@@ -116,18 +125,25 @@ static __attribute__((noreturn)) inline void invoke_abort()
 {
     abort_called = true;
 #if CONFIG_ESP32_APPTRACE_ENABLE
-    esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, ESP_APPTRACE_TRAX_BLOCK_SIZE*CONFIG_ESP32_APPTRACE_ONPANIC_HOST_FLUSH_TRAX_THRESH/100, CONFIG_ESP32_APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+#if CONFIG_SYSVIEW_ENABLE
+    SEGGER_RTT_ESP32_FlushNoLock(CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_TRAX_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+#else
+    esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_TRAX_THRESH,
+                              APPTRACE_ONPANIC_HOST_FLUSH_TMO);
 #endif
-    while(1) {
-        __asm__ ("break 0,0");
-        *((int*) 0) = 0;
+#endif
+    while (1) {
+        if (esp_cpu_in_ocd_debug_mode()) {
+            __asm__ ("break 0,0");
+        }
+        *((int *) 0) = 0;
     }
 }
 
 void abort()
 {
 #if !CONFIG_ESP32_PANIC_SILENT_REBOOT
-    ets_printf("abort() was called at PC 0x%08x on core %d\n", (intptr_t)__builtin_return_address(0) - 3, xPortGetCoreID());
+    ets_printf("abort() was called at PC 0x%08x on core %d\r\n", (intptr_t)__builtin_return_address(0) - 3, xPortGetCoreID());
 #endif
     invoke_abort();
 }
@@ -146,8 +162,10 @@ static const char *edesc[] = {
     "Cp4Dis", "Cp5Dis", "Cp6Dis", "Cp7Dis"
 };
 
+#define NUM_EDESCS (sizeof(edesc) / sizeof(char *))
 
 static void commonErrorHandler(XtExcFrame *frame);
+static inline void disableAllWdts();
 
 //The fact that we've panic'ed probably means the other CPU is now running wild, possibly
 //messing up the serial output, so we stall it here.
@@ -168,6 +186,12 @@ static void setFirstBreakpoint(uint32_t pc)
         ::"r"(pc):"a3", "a4");
 }
 
+//When interrupt watchdog happen in one core, both cores will be interrupted.
+//The core which doesn't trigger the interrupt watchdog will save the frame and return.
+//The core which triggers the interrupt watchdog will use the saved frame, and dump frames for both cores.
+#if !CONFIG_FREERTOS_UNICORE
+static volatile XtExcFrame * other_core_frame = NULL;
+#endif //!CONFIG_FREERTOS_UNICORE
 
 void panicHandler(XtExcFrame *frame)
 {
@@ -188,50 +212,85 @@ void panicHandler(XtExcFrame *frame)
     if (frame->exccause <= PANIC_RSN_MAX) {
         reason = reasons[frame->exccause];
     }
+
+#if !CONFIG_FREERTOS_UNICORE
+    //Save frame for other core.
+    if ((frame->exccause == PANIC_RSN_INTWDT_CPU0 && core_id == 1) || (frame->exccause == PANIC_RSN_INTWDT_CPU1 && core_id == 0)) {
+        other_core_frame = frame;
+        while (1);
+    }
+
+    //The core which triggers the interrupt watchdog will delay 1 us, so the other core can save its frame.
+    if (frame->exccause == PANIC_RSN_INTWDT_CPU0 || frame->exccause == PANIC_RSN_INTWDT_CPU1) {
+        ets_delay_us(1);
+    }
+
     if (frame->exccause == PANIC_RSN_CACHEERR && esp_cache_err_get_cpuid() != core_id) {
         // Cache error interrupt will be handled by the panic handler
         // on the other CPU.
-        return;
+        while (1);
     }
+#endif //!CONFIG_FREERTOS_UNICORE
+
     haltOtherCore();
+    esp_dport_access_int_abort();
     panicPutStr("Guru Meditation Error: Core ");
     panicPutDec(core_id);
     panicPutStr(" panic'ed (");
-    if (!abort_called) {
-        panicPutStr(reason);
-        panicPutStr(")\r\n");
-            if (frame->exccause == PANIC_RSN_DEBUGEXCEPTION) {
-                int debugRsn;
-                asm("rsr.debugcause %0":"=r"(debugRsn));
-                panicPutStr("Debug exception reason: ");
-                if (debugRsn&XCHAL_DEBUGCAUSE_ICOUNT_MASK) panicPutStr("SingleStep ");
-                if (debugRsn&XCHAL_DEBUGCAUSE_IBREAK_MASK) panicPutStr("HwBreakpoint ");
-                if (debugRsn&XCHAL_DEBUGCAUSE_DBREAK_MASK) {
-                    //Unlike what the ISA manual says, this core seemingly distinguishes from a DBREAK
-                    //reason caused by watchdog 0 and one caused by watchdog 1 by setting bit 8 of the
-                    //debugcause if the cause is watchdog 1 and clearing it if it's watchdog 0.
-                    if (debugRsn&(1<<8)) {
-#if CONFIG_FREERTOS_WATCHPOINT_END_OF_STACK
-                        panicPutStr("Stack canary watchpoint triggered ");
-#else
-                        panicPutStr("Watchpoint 1 triggered ");
-#endif
-                    } else {
-                        panicPutStr("Watchpoint 0 triggered ");
-                    }
-                }
-                if (debugRsn&XCHAL_DEBUGCAUSE_BREAK_MASK) panicPutStr("BREAK instr ");
-                if (debugRsn&XCHAL_DEBUGCAUSE_BREAKN_MASK) panicPutStr("BREAKN instr ");
-                if (debugRsn&XCHAL_DEBUGCAUSE_DEBUGINT_MASK) panicPutStr("DebugIntr ");
-                panicPutStr("\r\n");
-            }
-        } else {
-            panicPutStr("abort)\r\n");
+    panicPutStr(reason);
+    panicPutStr(")\r\n");
+    if (frame->exccause == PANIC_RSN_DEBUGEXCEPTION) {
+        int debugRsn;
+        asm("rsr.debugcause %0":"=r"(debugRsn));
+        panicPutStr("Debug exception reason: ");
+        if (debugRsn & XCHAL_DEBUGCAUSE_ICOUNT_MASK) {
+            panicPutStr("SingleStep ");
         }
+        if (debugRsn & XCHAL_DEBUGCAUSE_IBREAK_MASK) {
+            panicPutStr("HwBreakpoint ");
+        }
+        if (debugRsn & XCHAL_DEBUGCAUSE_DBREAK_MASK) {
+            //Unlike what the ISA manual says, this core seemingly distinguishes from a DBREAK
+            //reason caused by watchdog 0 and one caused by watchdog 1 by setting bit 8 of the
+            //debugcause if the cause is watchdog 1 and clearing it if it's watchdog 0.
+            if (debugRsn & (1 << 8)) {
+#if CONFIG_FREERTOS_WATCHPOINT_END_OF_STACK
+                const char *name = pcTaskGetTaskName(xTaskGetCurrentTaskHandleForCPU(core_id));
+                panicPutStr("Stack canary watchpoint triggered (");
+                panicPutStr(name);
+                panicPutStr(") ");
+#else
+                panicPutStr("Watchpoint 1 triggered ");
+#endif
+            } else {
+                panicPutStr("Watchpoint 0 triggered ");
+            }
+        }
+        if (debugRsn & XCHAL_DEBUGCAUSE_BREAK_MASK) {
+            panicPutStr("BREAK instr ");
+        }
+        if (debugRsn & XCHAL_DEBUGCAUSE_BREAKN_MASK) {
+            panicPutStr("BREAKN instr ");
+        }
+        if (debugRsn & XCHAL_DEBUGCAUSE_DEBUGINT_MASK) {
+            panicPutStr("DebugIntr ");
+        }
+        panicPutStr("\r\n");
+    }
 
     if (esp_cpu_in_ocd_debug_mode()) {
+        disableAllWdts();
+        if (frame->exccause == PANIC_RSN_INTWDT_CPU0 ||
+            frame->exccause == PANIC_RSN_INTWDT_CPU1) {
+            TIMERG1.int_clr_timers.wdt = 1;
+        }
 #if CONFIG_ESP32_APPTRACE_ENABLE
-        esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, ESP_APPTRACE_TRAX_BLOCK_SIZE*CONFIG_ESP32_APPTRACE_ONPANIC_HOST_FLUSH_TRAX_THRESH/100, CONFIG_ESP32_APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+#if CONFIG_SYSVIEW_ENABLE
+        SEGGER_RTT_ESP32_FlushNoLock(CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_TRAX_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+#else
+        esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_TRAX_THRESH,
+                                  APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+#endif
 #endif
         setFirstBreakpoint(frame->pc);
         return;
@@ -242,28 +301,37 @@ void panicHandler(XtExcFrame *frame)
 void xt_unhandled_exception(XtExcFrame *frame)
 {
     haltOtherCore();
-    panicPutStr("Guru Meditation Error of type ");
-    int exccause = frame->exccause;
-    if (exccause < 40) {
-        panicPutStr(edesc[exccause]);
-    } else {
-        panicPutStr("Unknown");
-    }
-    panicPutStr(" occurred on core ");
-    panicPutDec(xPortGetCoreID());
-    if (esp_cpu_in_ocd_debug_mode()) {
-        panicPutStr(" at pc=");
-        panicPutHex(frame->pc);
-        panicPutStr(". Setting bp and returning..\r\n");
+    esp_dport_access_int_abort();
+    if (!abort_called) {
+        panicPutStr("Guru Meditation Error: Core ");
+        panicPutDec(xPortGetCoreID());
+        panicPutStr(" panic'ed (");
+        int exccause = frame->exccause;
+        if (exccause < NUM_EDESCS) {
+            panicPutStr(edesc[exccause]);
+        } else {
+            panicPutStr("Unknown");
+        }
+        panicPutStr(")\r\n");
+        if (esp_cpu_in_ocd_debug_mode()) {
+            panicPutStr(" at pc=");
+            panicPutHex(frame->pc);
+            panicPutStr(". Setting bp and returning..\r\n");
 #if CONFIG_ESP32_APPTRACE_ENABLE
-        esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, ESP_APPTRACE_TRAX_BLOCK_SIZE*CONFIG_ESP32_APPTRACE_ONPANIC_HOST_FLUSH_TRAX_THRESH/100, CONFIG_ESP32_APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+#if CONFIG_SYSVIEW_ENABLE
+            SEGGER_RTT_ESP32_FlushNoLock(CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_TRAX_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+#else
+            esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_TRAX_THRESH,
+                                      APPTRACE_ONPANIC_HOST_FLUSH_TMO);
 #endif
-        //Stick a hardware breakpoint on the address the handler returns to. This way, the OCD debugger
-        //will kick in exactly at the context the error happened.
-        setFirstBreakpoint(frame->pc);
-        return;
+#endif
+            //Stick a hardware breakpoint on the address the handler returns to. This way, the OCD debugger
+            //will kick in exactly at the context the error happened.
+            setFirstBreakpoint(frame->pc);
+            return;
+        }
+        panicPutStr(". Exception was unhandled.\r\n");
     }
-    panicPutStr(". Exception was unhandled.\r\n");
     commonErrorHandler(frame);
 }
 
@@ -371,7 +439,7 @@ static void doBacktrace(XtExcFrame *frame)
             break;
         }
         sp = *((uint32_t *) (sp - 0x10 + 4));
-        putEntry(pc, sp);
+        putEntry(pc - 3, sp); // stack frame addresses are return addresses, so subtract 3 to get the CALL address
         pc = *((uint32_t *) (psp - 0x10));
         if (pc < 0x40000000) {
             break;
@@ -380,13 +448,10 @@ static void doBacktrace(XtExcFrame *frame)
     panicPutStr("\r\n\r\n");
 }
 
-void esp_restart_noos() __attribute__ ((noreturn));
-
 /*
-  We arrive here after a panic or unhandled exception, when no OCD is detected. Dump the registers to the
-  serial port and either jump to the gdb stub, halt the CPU or reboot.
-*/
-static void commonErrorHandler(XtExcFrame *frame)
+ * Dump registers and do backtrace.
+ */
+static void commonErrorHandler_dump(XtExcFrame *frame, int core_id)
 {
     int *regs = (int *)frame;
     int x, y;
@@ -396,17 +461,13 @@ static void commonErrorHandler(XtExcFrame *frame)
         "A14     ", "A15     ", "SAR     ", "EXCCAUSE", "EXCVADDR", "LBEG    ", "LEND    ", "LCOUNT  "
     };
 
-    // start panic WDT to restart system if we hang in this handler
-    esp_panic_wdt_start();
-
-    //Feed the watchdogs, so they will give us time to print out debug info
-    reconfigureAllWdts();
-
     /* only dump registers for 'real' crashes, if crashing via abort()
        the register window is no longer useful.
     */
     if (!abort_called) {
-        panicPutStr("Register dump:\r\n");
+        panicPutStr("Core");
+        panicPutDec(core_id);
+        panicPutStr(" register dump:\r\n");
 
         for (x = 0; x < 24; x += 4) {
             for (y = 0; y < 4; y++) {
@@ -419,14 +480,73 @@ static void commonErrorHandler(XtExcFrame *frame)
             }
             panicPutStr("\r\n");
         }
+
+        if (xPortInterruptedFromISRContext()
+#if !CONFIG_FREERTOS_UNICORE
+            && other_core_frame != frame
+#endif //!CONFIG_FREERTOS_UNICORE
+            ) {
+            //If the core which triggers the interrupt watchdog was in ISR context, dump the epc registers.
+            uint32_t __value;
+            panicPutStr("Core");
+            panicPutDec(core_id);
+            panicPutStr(" was running in ISR context:\r\n");
+
+            __asm__("rsr.epc1 %0" : "=a"(__value));
+            panicPutStr("EPC1    : 0x");
+            panicPutHex(__value);
+
+            __asm__("rsr.epc2 %0" : "=a"(__value));
+            panicPutStr("  EPC2    : 0x");
+            panicPutHex(__value);
+
+            __asm__("rsr.epc3 %0" : "=a"(__value));
+            panicPutStr("  EPC3    : 0x");
+            panicPutHex(__value);
+
+            __asm__("rsr.epc4 %0" : "=a"(__value));
+            panicPutStr("  EPC4    : 0x");
+            panicPutHex(__value);
+
+            panicPutStr("\r\n");
+        }
+
     }
 
     /* With windowed ABI backtracing is easy, let's do it. */
     doBacktrace(frame);
 
+}
+
+/*
+  We arrive here after a panic or unhandled exception, when no OCD is detected. Dump the registers to the
+  serial port and either jump to the gdb stub, halt the CPU or reboot.
+*/
+static __attribute__((noreturn)) void commonErrorHandler(XtExcFrame *frame)
+{
+
+    int core_id = xPortGetCoreID();
+    // start panic WDT to restart system if we hang in this handler
+    esp_panic_wdt_start();
+
+    //Feed the watchdogs, so they will give us time to print out debug info
+    reconfigureAllWdts();
+
+    commonErrorHandler_dump(frame, core_id);
+#if !CONFIG_FREERTOS_UNICORE
+    if (other_core_frame != NULL) {
+        commonErrorHandler_dump((XtExcFrame *)other_core_frame, (core_id ? 0 : 1));
+    }
+#endif //!CONFIG_FREERTOS_UNICORE
+
 #if CONFIG_ESP32_APPTRACE_ENABLE
     disableAllWdts();
-    esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, ESP_APPTRACE_TRAX_BLOCK_SIZE*CONFIG_ESP32_APPTRACE_ONPANIC_HOST_FLUSH_TRAX_THRESH/100, CONFIG_ESP32_APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+#if CONFIG_SYSVIEW_ENABLE
+    SEGGER_RTT_ESP32_FlushNoLock(CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_TRAX_THRESH, APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+#else
+    esp_apptrace_flush_nolock(ESP_APPTRACE_DEST_TRAX, CONFIG_ESP32_APPTRACE_POSTMORTEM_FLUSH_TRAX_THRESH,
+                              APPTRACE_ONPANIC_HOST_FLUSH_TMO);
+#endif
     reconfigureAllWdts();
 #endif
 
@@ -437,15 +557,22 @@ static void commonErrorHandler(XtExcFrame *frame)
     esp_gdbstub_panic_handler(frame);
 #else
 #if CONFIG_ESP32_ENABLE_COREDUMP
-    disableAllWdts();
+    static bool s_dumping_core;
+    if (s_dumping_core) {
+        panicPutStr("Re-entered core dump! Exception happened during core dump!\r\n");
+    } else {
+        disableAllWdts();
+        s_dumping_core = true;
 #if CONFIG_ESP32_ENABLE_COREDUMP_TO_FLASH
-    esp_core_dump_to_flash(frame);
+        esp_core_dump_to_flash(frame);
 #endif
 #if CONFIG_ESP32_ENABLE_COREDUMP_TO_UART && !CONFIG_ESP32_PANIC_SILENT_REBOOT
-    esp_core_dump_to_uart(frame);
+        esp_core_dump_to_uart(frame);
 #endif
-    reconfigureAllWdts();
-#endif
+        s_dumping_core = false;
+        reconfigureAllWdts();
+    }
+#endif /* CONFIG_ESP32_ENABLE_COREDUMP */
     esp_panic_wdt_stop();
 #if CONFIG_ESP32_PANIC_PRINT_REBOOT || CONFIG_ESP32_PANIC_SILENT_REBOOT
     panicPutStr("Rebooting...\r\n");
@@ -459,8 +586,8 @@ static void commonErrorHandler(XtExcFrame *frame)
     disableAllWdts();
     panicPutStr("CPU halted.\r\n");
     while (1);
-#endif
-#endif
+#endif /* CONFIG_ESP32_PANIC_PRINT_REBOOT || CONFIG_ESP32_PANIC_SILENT_REBOOT */
+#endif /* CONFIG_ESP32_PANIC_GDBSTUB */
 }
 
 
@@ -475,28 +602,36 @@ void esp_set_breakpoint_if_jtag(void *fn)
 esp_err_t esp_set_watchpoint(int no, void *adr, int size, int flags)
 {
     int x;
-    if (no<0 || no>1) return ESP_ERR_INVALID_ARG;
-    if (flags&(~0xC0000000)) return ESP_ERR_INVALID_ARG;
-    int dbreakc=0x3F;
-    //We support watching 2^n byte values, from 1 to 64. Calculate the mask for that.
-    for (x=0; x<7; x++) {
-        if (size==(1<<x)) break;
-        dbreakc<<=1;
+    if (no < 0 || no > 1) {
+        return ESP_ERR_INVALID_ARG;
     }
-    if (x==7) return ESP_ERR_INVALID_ARG;
+    if (flags & (~0xC0000000)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    int dbreakc = 0x3F;
+    //We support watching 2^n byte values, from 1 to 64. Calculate the mask for that.
+    for (x = 0; x < 7; x++) {
+        if (size == (1 << x)) {
+            break;
+        }
+        dbreakc <<= 1;
+    }
+    if (x == 7) {
+        return ESP_ERR_INVALID_ARG;
+    }
     //Mask mask and add in flags.
-    dbreakc=(dbreakc&0x3f)|flags;
+    dbreakc = (dbreakc & 0x3f) | flags;
 
-    if (no==0) {
+    if (no == 0) {
         asm volatile(
             "wsr.dbreaka0 %0\n" \
             "wsr.dbreakc0 %1\n" \
-            ::"r"(adr),"r"(dbreakc));
+            ::"r"(adr), "r"(dbreakc));
     } else {
         asm volatile(
             "wsr.dbreaka1 %0\n" \
             "wsr.dbreakc1 %1\n" \
-            ::"r"(adr),"r"(dbreakc));
+            ::"r"(adr), "r"(dbreakc));
     }
     return ESP_OK;
 }
@@ -504,8 +639,8 @@ esp_err_t esp_set_watchpoint(int no, void *adr, int size, int flags)
 void esp_clear_watchpoint(int no)
 {
     //Setting a dbreakc register to 0 makes it trigger on neither load nor store, effectively disabling it.
-    int dbreakc=0;
-    if (no==0) {
+    int dbreakc = 0;
+    if (no == 0) {
         asm volatile(
             "wsr.dbreakc0 %0\n" \
             ::"r"(dbreakc));

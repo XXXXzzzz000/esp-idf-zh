@@ -53,6 +53,7 @@ typedef struct {
  */
 struct spi_slave_transaction_t {
     size_t length;                  ///< Total data length, in bits
+    size_t trans_len;               ///< Transaction data length, in bits
     const void *tx_buffer;          ///< Pointer to transmit buffer, or NULL for no MOSI phase
     void *rx_buffer;                ///< Pointer to receive buffer, or NULL for no MISO phase
     void *user;                     ///< User-defined variable. Can be used to store eg transaction ID.
@@ -69,6 +70,10 @@ struct spi_slave_transaction_t {
  * @param dma_chan Either 1 or 2. A SPI bus used by this driver must have a DMA channel associated with
  *                 it. The SPI hardware has two DMA channels to share. This parameter indicates which
  *                 one to use.
+ *
+ * @warning If a DMA channel is selected, any transmit and receive buffer used should be allocated in 
+ *          DMA-capable memory.
+ *
  * @return 
  *         - ESP_ERR_INVALID_ARG   if configuration is invalid
  *         - ESP_ERR_INVALID_STATE if host already is in use

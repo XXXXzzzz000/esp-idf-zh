@@ -9,13 +9,23 @@
 Underlying storage
 ^^^^^^^^^^^^^^^^^^
 
+<<<<<<< HEAD
 当前，NVS 通过 ``spi_flash_{read|write|erase}`` API 使用了一部分主 flash 存储器。该库使用第一个分区 —— 其类型是 ``data``，子类型是 ``nvs``。
+=======
+Currently NVS uses a portion of main flash memory through ``spi_flash_{read|write|erase}`` APIs. The library uses the all the partitions with ``data`` type and ``nvs`` subtype. The application can choose to use the partition with label ``nvs`` through ``nvs_open`` API or any of the other partition by specifying its name through ``nvs_open_from_part`` API.
+>>>>>>> master
 
 该库将来可能会添加其它的存储器后端，让数据可以保存在另一个 flash（I2C 或者 SPI）芯片、RTC、FRAM 等中。
 
 .. note:: 如果 NVS 分区被截断了（例如分区表布局文件被修改），它上面的内容必修被擦除。ESP-IDF 构建系统提供了一个 ``make erase_flash`` 目标来擦除 flash 芯片上的所有内容。
 
+<<<<<<< HEAD
 键和值
+=======
+.. note:: NVS works best for storing many small values, rather than a few large values of type 'string' and 'blob'. If storing large blobs or strings is required, consider using the facilities provided by the FAT filesystem on top of the wear levelling library.
+
+Keys and values
+>>>>>>> master
 ^^^^^^^^^^^^^^^
 
 NVS 操作的对象是键值对。键是 ASCII 字符串，当前的最大键长度是 15 个字符。值可以是下面某一种类型：
@@ -24,7 +34,14 @@ NVS 操作的对象是键值对。键是 ASCII 字符串，当前的最大键长
 -  以零结尾的字符串
 -  长度可变的二进制数据 (blob)
 
+<<<<<<< HEAD
 在今后也可能支持其它类型，例如 ``float`` 和 ``double``。
+=======
+.. note::
+   String and blob values are currently limited to 1984 bytes. For strings, this includes the null terminator.
+
+Additional types, such as ``float`` and ``double`` may be added later.
+>>>>>>> master
 
 键必须是唯一的。向一个已存在的键写值时的行为如下：
 
@@ -37,7 +54,12 @@ NVS 操作的对象是键值对。键是 ASCII 字符串，当前的最大键长
 命名空间
 ^^^^^^^^^^
 
+<<<<<<< HEAD
 为了减小不同组件间命令冲突的可能性，NVS 将每个键值对分配到一个命名空间中。命名空间的名字与键名的规则相同，即最长 15 个字符。命名空间的名字在执行 ``nvs_open`` 调用时指定。这个调用会返回一个不透明的句柄，这个句柄在随后调用函数 `nvs_read_*``、``nvs_write_*`` 和 ``nvs_commit`` 时使用。这样，句柄与命名空间相关联，键名就不会与其它组件具有相同名字的键冲突。
+=======
+To mitigate potential conflicts in key names between different components, NVS assigns each key-value pair to one of namespaces. Namespace names follow the same rules as key names, i.e. 15 character maximum length. Namespace name is specified in the ``nvs_open`` or ``nvs_open_from_part`` call. This call returns an opaque handle, which is used in subsequent calls to ``nvs_read_*``, ``nvs_write_*``, and ``nvs_commit`` functions. This way, handle is associated with a namespace, and key names will not collide with same names in other namespaces.
+Please note that the namespaces with same name in different NVS partitions are considered as separate namespaces.
+>>>>>>> master
 
 安全、篡改和鲁棒性
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

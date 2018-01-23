@@ -11,15 +11,22 @@
 应用程序示例
 -------------------
 
+<<<<<<< HEAD
 请检查 ESP-IDF 示例中的 :example:`bluetooth` 文件夹，它包含如下示例：
 
 :example:`bluetooth/ble_adv`
 
   这是一个带有虚拟 HCI 接口的 BLE 广播 demo。BLE 广播时发送 Reset/ADV_PARAM/ADV_DATA/ADV_ENABLE HCI 命令。
+=======
+Check :example:`bluetooth` folder in ESP-IDF examples, which contains the following application:
+
+* This is a BLE advertising demo with virtual HCI interface. Send Reset/ADV_PARAM/ADV_DATA/ADV_ENABLE HCI command for BLE advertising - :example:`bluetooth/ble_adv`.
+>>>>>>> master
 
 API 参考手册
 -------------
 
+<<<<<<< HEAD
 头文件
 ^^^^^^^^^^^^
 
@@ -56,3 +63,6 @@ API 参考手册
 .. doxygenfunction:: esp_vhci_host_send_packet
 .. doxygenfunction:: esp_vhci_host_register_callback
 
+=======
+.. include:: /_build/inc/bt.inc
+>>>>>>> master

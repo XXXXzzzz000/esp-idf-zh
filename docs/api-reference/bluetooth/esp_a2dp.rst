@@ -12,15 +12,22 @@ Bluetooth A2DP API
 应用程序示例
 -------------------
 
+<<<<<<< HEAD
 请检查 ESP-IDF 示例中的 :example:`bluetooth` 文件夹，它包含如下示例：
 
 :example:`bluetooth/a2dp_sink`
 
   这是一个 A2DP sink 客户端 demo。该 demo 可以被 A2DP 设备发现和连接，从远程设备接收音频数据。
+=======
+Check :example:`bluetooth` folder in ESP-IDF examples, which contains the following application:
+
+* This is a A2DP sink client demo. This demo can be discovered and connected by A2DP source device and receive the audio stream from remote device - :example:`bluetooth/a2dp_sink`
+>>>>>>> master
 
 API 参考手册
 -------------
 
+<<<<<<< HEAD
 头文件
 ^^^^^^^^^^^^
 
@@ -79,4 +86,7 @@ API 参考手册
 .. doxygenfunction:: esp_a2d_sink_deinit
 .. doxygenfunction:: esp_a2d_sink_connect
 .. doxygenfunction:: esp_a2d_sink_disconnect
+=======
+.. include:: /_build/inc/esp_a2dp_api.inc
+>>>>>>> master
 

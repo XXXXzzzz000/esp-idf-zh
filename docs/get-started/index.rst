@@ -2,6 +2,7 @@
 快速入门
 ***********
 
+<<<<<<< HEAD
 开发 ESP32 应用程序需要准备：
 
 * 安装有 Windows、Linux 或者 Mac 操作系统的 **PC**
@@ -9,6 +10,29 @@
 * **ESP-IDF** —— 包含 ESP32 的 API 和用于操作 **工具链** 的脚本
 * 编写 C 语言程序的文本编辑器，例如 `Eclipse <http://www.eclipse.org/>`_
 * **ESP32** 开发板
+=======
+This document is intended to help users set up the software environment for developement of applications using hardware based on the Espressif ESP32. Through a simple example we would like to illustrate how to use ESP-IDF (Espressif IoT Development Framework), including the menu based configuration, compiling the ESP-IDF and firmware download to ESP32 boards. 
+
+
+Introduction
+============
+
+ESP32 integrates Wi-Fi (2.4 GHz band) and Bluetooth 4.2 solutions on a single chip, along with dual high performance cores, Ultra Low Power co-processor and several peripherals. Powered by 40 nm technology, ESP32 provides a robust, highly integrated platform to meet the continuous demands for efficient power usage, compact design, security, high performance, and reliability.
+
+Espressif provides the basic hardware and software resources that help application developers to build their ideas around the ESP32 series hardware. The software development framework by Espressif is intended for rapidly developing Internet-of-Things (IoT) applications, with Wi-Fi, Bluetooth, power management and several other system features. 
+
+
+What You Need
+=============
+
+To develop applications for ESP32 you need:
+
+* **PC** loaded with either Windows, Linux or Mac operating system
+* **Toolchain** to build the **Application** for ESP32
+* **ESP-IDF** that essentially contains API for ESP32 and scripts to operate the **Toolchain**
+* A text editor to write programs (**Projects**) in C, e.g. `Eclipse <https://www.eclipse.org/>`_
+* The **ESP32** board itself and a **USB cable** to connect it to the **PC**
+>>>>>>> master
 
 .. figure:: ../_static/what-you-need.png
     :align: center
@@ -44,14 +68,16 @@
 
     ESP32 DevKitC <get-started-devkitc>
     ESP-WROVER-KIT <get-started-wrover-kit>
+    ESP32-PICO-KIT <get-started-pico-kit>
 
 如果你有其它的开发板，请查看下面的内容。
 
-.. _get-started-setup-toochain:
+.. _get-started-setup-toolchain:
 
 设置工具链
 ===============
 
+<<<<<<< HEAD
 你可以完全遵循标准安装过程或者自定义你的环境，这完全依赖于你个人的经验和喜好。下面的指令用于标准安装。如果要在你自己的系统上进行设置，请移步 :ref:`get-started-customized-setup`。
 
 .. _get-started-standard-setup:
@@ -60,6 +86,9 @@
 ---------------------------
 
 用 ESP32 进行开发最快的方法是安装预编译的工具链。请根据你的操作系选择点击对应的链接，并按照该链接中的指令进行安装。
+=======
+The quickest way to start development with ESP32 is by installing a prebuilt toolchain. Pick up your OS below and follow provided instructions. 
+>>>>>>> master
 
 .. toctree::
     :hidden:
@@ -89,6 +118,7 @@
 
 .. note::
 
+<<<<<<< HEAD
     我们默认使用 ``~/esp`` 目录来安装预编译的工具链、ESP-IDF 和示例程序。你也可以使用其它目录，但是需要注意调整对应的命令。
     
 设置完工具链后，你可以进入 :ref:`get-started-get-esp-idf` 一节。
@@ -118,10 +148,13 @@
 
 .. toctree::
     :maxdepth: 1
+=======
+    We are using ``~/esp`` directory to install the prebuilt toolchain, ESP-IDF and sample applications. You can use different directory, but need to adjust respective commands.
 
-    windows-setup-scratch
-    linux-setup-scratch
-    macos-setup-scratch
+Depending on your experience and preferences, instead of using a prebuilt toolchain, you may want to customize your environment. To set up the system your own way go to section :ref:`get-started-customized-setup`.
+>>>>>>> master
+
+Once you are done with setting up the toolchain then go to section :ref:`get-started-get-esp-idf`.
 
 
 .. _get-started-get-esp-idf:
@@ -129,8 +162,14 @@
 获取 ESP-IDF
 =============
 
+<<<<<<< HEAD
 工具链（包括用于编译和构建应用程序的程序）安装完后，你还需要 ESP32 相关的 API/库。乐鑫已经将它们放到 `ESP-IDF 仓库 <https://github.com/espressif/esp-idf>`_ 中了。
 要获取这些 API/库，请打开一个控制台终端，进入某个你希望存放 ESP-IDF 的目录，然后克隆代码 ::
+=======
+.. highlight:: bash
+
+Besides the toolchain (that contains programs to compile and build the application), you also need ESP32 specific API / libraries. They are provided by Espressif in `ESP-IDF repository <https://github.com/espressif/esp-idf>`_. To get it, open terminal, navigate to the directory you want to put ESP-IDF, and clone it using ``git clone`` command::
+>>>>>>> master
 
     cd ~/esp
     git clone --recursive https://github.com/espressif/esp-idf.git
@@ -144,9 +183,12 @@ ESP-IDF 将会被下载到 ``~/esp/esp-idf``。
         cd ~/esp/esp-idf
         git submodule update --init
 
+<<<<<<< HEAD
 .. note::
 
     在 **Windows** 平台克隆子模块时，``git clone`` 命令可能会打印一些 ``': not a valid identifier...`` 消息。这是一个 `已知问题 <https://github.com/espressif/esp-idf/issues/11>`_ ，但实际上 git clone 已经成功了，没有任何问题。
+=======
+>>>>>>> master
 
 .. _get-started-setup-path:
 
@@ -205,12 +247,28 @@ ESP-IDF 将会被下载到 ``~/esp/esp-idf``。
 
 下面是一些使用 ``menuconfig`` 的小技巧：
 
+<<<<<<< HEAD
 * 使用 up & down 组合键在菜单中上下移动
 * 使用 Enter 键进入一个子菜单，Escape 键退出子菜单或退出整个菜单
 * 输入 ``?`` 查看帮助信息，Enter 键退出帮助屏幕
 * 使用空格键或 ``Y`` 和 ``N`` 键来使能(Yes) 和禁止 (No) 带有复选框 "``[*]``" 的配置项
 * 当光标在某个配置项上面高亮时，输入 ``?`` 可以直接查看该项的帮助信息
 * 输入 ``/`` 可以来搜索某个配置项
+=======
+.. note::
+
+   On Windows, serial ports have names like COM1. On MacOS, they start with ``/dev/cu.``. On Linux, they start with ``/dev/tty``.
+   (See :doc:`establish-serial-connection` for full details.)
+
+Here are couple of tips on navigation and use of ``menuconfig``:
+
+* Use up & down arrow keys to navigate the menu.
+* Use Enter key to go into a submenu, Escape key to go out or to exit.
+* Type ``?`` to see a help screen. Enter key exits the help screen.
+* Use Space key, or ``Y`` and ``N`` keys to enable (Yes) and disable (No) configuration items with checkboxes "``[*]``"
+* Pressing ``?`` while highlighting a configuration item displays help about that item.
+* Type ``/`` to search the configuration items.
+>>>>>>> master
 
 .. note::
 
@@ -262,6 +320,7 @@ ESP-IDF 将会被下载到 ``~/esp/esp-idf``。
 
 如果你偏向于使用 Eclipse IDE 而不是运行 ``make``，请参考 :doc:`Eclipse guide <eclipse-setup>`。
 
+
 .. _get-started-build-monitor:
 
 监视器
@@ -289,7 +348,51 @@ ESP-IDF 将会被下载到 ``~/esp/esp-idf``。
     Restarting in 8 seconds...
     Restarting in 7 seconds...
 
+<<<<<<< HEAD
 要退出监视器，请使用快捷键 ``Ctrl+]`` 。如果要在同一个命令中执行 ``make flash`` 和 ``make monitor``，可以直接输入 ``make flash monitor``。关于监视器的更多使用细节请参考 :doc:`IDF Monitor <idf-monitor>`。
+=======
+To exit the monitor use shortcut ``Ctrl+]``. 
+
+.. note::
+
+    If instead of the messages above, you see a random garbage similar to::
+
+        e���)(Xn@�y.!��(�PW+)��Hn9a؅/9�!�t5��P�~�k��e�ea�5�jA
+        ~zY��Y(1�,1�� e���)(Xn@�y.!Dr�zY(�jpi�|�+z5Ymvp
+
+    or monitor fails shortly after upload, your board is likely using 26MHz crystal, while the ESP-IDF assumes default of 40MHz. Exit the monitor, go back to the :ref:`menuconfig <get-started-configure>`, change :ref:`CONFIG_ESP32_XTAL_FREQ_SEL` to 26MHz, then :ref:`build and flash <get-started-build-flash>` the application again. This is found under ``make menuconfig`` under Component config --> ESP32-specific --> Main XTAL frequency.
+
+To execute ``make flash`` and ``make monitor`` in one go, type ``make flash monitor``. Check section :doc:`IDF Monitor <idf-monitor>` for handy shortcuts and more details on using this application.
+
+That's all what you need to get started with ESP32! 
+
+Now you are ready to try some other :idf:`examples`, or go right to developing your own applications.
+
+
+Updating ESP-IDF
+================
+
+After some time of using ESP-IDF, you may want to update it to take advantage of new features or bug fixes. The simplest way to do so is by deleting existing ``esp-idf`` folder and cloning it again, exactly as when doing initial installation described in sections :ref:`get-started-get-esp-idf`.
+
+Another solution is to update only what has changed. This method is useful if you have slow connection to the GiHub. To do the update run the following commands::
+
+    cd ~/esp/esp-idf
+    git pull
+    git submodule update --init --recursive
+
+The ``git pull`` command is fetching and merging changes from ESP-IDF repository on GitHub. Then ``git submodule update --init --recursive`` is updating existing submodules or getting a fresh copy of new ones. On GitHub the submodules are represented as links to other repositories and require this additional command to get them onto your PC.
+
+If you would like to use specific release of ESP-IDF, e.g. `v2.1`, run::
+
+    cd ~/esp
+    git clone https://github.com/espressif/esp-idf.git esp-idf-v2.1
+    cd esp-idf-v2.1/
+    git checkout v2.1
+    git submodule update --init --recursive
+
+After that remember to :doc:`add-idf_path-to-profile`, so the toolchain scripts know where to find the ESP-IDF in it's release specific location.
+
+>>>>>>> master
 
 相关文档
 =================
@@ -302,4 +405,4 @@ ESP-IDF 将会被下载到 ``~/esp/esp-idf``。
     make-project
     eclipse-setup
     idf-monitor
-
+    toolchain-setup-scratch

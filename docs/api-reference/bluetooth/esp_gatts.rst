@@ -11,6 +11,7 @@ GATT SERVER API
 应用程序示例
 -------------------
 
+<<<<<<< HEAD
 请检查 ESP-IDF 示例中的 :example:`bluetooth` 文件夹，它包含如下示例：
 
 :example:`bluetooth/gatt_server` 
@@ -125,4 +126,14 @@ API 参考手册
 .. doxygenfunction:: esp_ble_gatts_get_attr_value
 .. doxygenfunction:: esp_ble_gatts_open
 .. doxygenfunction:: esp_ble_gatts_close
+=======
+Check :example:`bluetooth` folder in ESP-IDF examples, which contains the following application:
+
+* This is a GATT server demo. Use GATT API to create a GATT server with send advertising. This GATT server can be connected and the service can be discovery - :example:`bluetooth/gatt_server`
+
+API Reference
+-------------
+
+.. include:: /_build/inc/esp_gatts_api.inc
+>>>>>>> master
 

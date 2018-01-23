@@ -30,3 +30,11 @@ all: phy_init_data
 flash: phy_init_data
 
 endif # CONFIG_ESP32_PHY_INIT_DATA_IN_PARTITION
+
+
+# Enable psram cache bug workaround in compiler if selected
+ifdef CONFIG_SPIRAM_CACHE_WORKAROUND
+CFLAGS+=-mfix-esp32-psram-cache-issue
+CXXFLAGS+=-mfix-esp32-psram-cache-issue
+endif
+

@@ -17,11 +17,10 @@
  ******************************************************************************/
 #include <string.h>
 #include "bt_target.h"
-#include "gki.h"
 #include "avrc_api.h"
 #include "avrc_defs.h"
 #include "avrc_int.h"
-#include "bt_utils.h"
+#include "bt_defs.h"
 
 #if (defined(AVRC_INCLUDED) && AVRC_INCLUDED == TRUE)
 

@@ -107,9 +107,15 @@ Data 子类型
 - ota (0) 是 :ref:`OTA 数据分区 <ota_data_partition>`，用于存储当前所选择的 OTA 应用程序的信息。这个分区的大小固定为 0x2000 字节。更多细节请参考 :ref:`OTA 文档 <ota_data_partition>`。
 - phy (1) 用于存储 PHY 初始化数据。这样可以为每个设备（而不是在固件中）配置 PHY。
 
+<<<<<<< HEAD
   - 在默认的配置中，phy partition 未被使用，PHY 初始化数据被编译到应用程序自身中。对于这种过情况，可以将这个分区从分区表中移除，以节约空间。
   - 要从这个分区表中加载 PHY 数据，运行 ``make menuconfig`` 并使能 "Component Config" -> "PHY" -> "Use a partition to store PHY init data"。你还需要给你的设备烧写 phy 初始化数据，因为 esp-idf 的编译系统默认不会自动完成该操作。
 - nvs (2) 用于 :doc:`非易失性存储器 (NVS) API <../api-reference/storage/nvs_flash>`。
+=======
+  - In the default configuration, the phy partition is not used and PHY initialisation data is compiled into the app itself. As such, this partition can be removed from the partition table to save space.
+  - To load PHY data from this partition, run ``make menuconfig`` and enable :ref:`CONFIG_ESP32_PHY_INIT_DATA_IN_PARTITION` option. You will also need to flash your devices with phy init data as the esp-idf build system does not do this automatically.
+- nvs (2) is for the :doc:`Non-Volatile Storage (NVS) API <../api-reference/storage/nvs_flash>`.
+>>>>>>> master
 
   - NVS 用于存储每个设备的 PHY 校验数据（与初始化数据不同）。
   - NVS 用于存储 Wifi 数据（如果使用了 :doc:`esp_wifi_set_storage(WIFI_STORAGE_FLASH) <../api-reference/wifi/esp_wifi>` 初始函数）。

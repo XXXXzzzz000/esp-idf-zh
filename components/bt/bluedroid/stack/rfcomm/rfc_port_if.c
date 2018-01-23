@@ -25,13 +25,14 @@
 
 #include <string.h>
 #include "bt_target.h"
-#include "gki.h"
 #include "rfcdefs.h"
 #include "port_api.h"
 #include "l2c_api.h"
 #include "port_int.h"
 #include "rfc_int.h"
 #include "bt_defs.h"
+
+#if (defined RFCOMM_INCLUDED && RFCOMM_INCLUDED == TRUE)
 
 #if RFC_DYNAMIC_MEMORY == FALSE
 tRFC_CB rfc_cb;
@@ -373,3 +374,4 @@ void RFCOMM_DataReq (tRFC_MCB *p_mcb, UINT8 dlci, BT_HDR *p_buf)
 }
 
 
+#endif ///(defined RFCOMM_INCLUDED && RFCOMM_INCLUDED == TRUE)

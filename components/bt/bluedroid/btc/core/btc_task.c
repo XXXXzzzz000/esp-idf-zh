@@ -14,11 +14,12 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "bt_target.h"
 #include "btc_task.h"
 #include "bt_trace.h"
 #include "thread.h"
-#include "gki.h"
 #include "bt_defs.h"
+#include "allocator.h"
 #include "btc_main.h"
 #include "btc_dev.h"
 #include "btc_gatts.h"
@@ -29,10 +30,17 @@
 #include "btc_alarm.h"
 #include "bta_gatt_api.h"
 #if CONFIG_CLASSIC_BT_ENABLED
-#include "btc_gap_bt.h"
 #include "btc_profile_queue.h"
+#if (BTC_GAP_BT_INCLUDED == TRUE)
+#include "btc_gap_bt.h"
+#endif /* BTC_GAP_BT_INCLUDED == TRUE */
+#if BTC_AV_INCLUDED
 #include "btc_av.h"
 #include "btc_avrc.h"
+#endif /* #if BTC_AV_INCLUDED */
+#if CONFIG_BT_SPP_ENABLED
+#include "btc_spp.h"
+#endif /* #if CONFIG_BT_SPP_ENABLED */
 #endif /* #if CONFIG_CLASSIC_BT_ENABLED */
 
 
@@ -57,10 +65,17 @@ static btc_func_t profile_tab[BTC_PID_NUM] = {
     [BTC_PID_DM_SEC]    = {NULL,                        btc_dm_sec_cb_handler   },
     [BTC_PID_ALARM]     = {btc_alarm_handler,           NULL                    },
 #if CONFIG_CLASSIC_BT_ENABLED
+#if (BTC_GAP_BT_INCLUDED == TRUE)
     [BTC_PID_GAP_BT]    = {btc_gap_bt_call_handler,     NULL                    },
+#endif /* (BTC_GAP_BT_INCLUDED == TRUE) */
     [BTC_PID_PRF_QUE]   = {btc_profile_queue_handler,   NULL                    },
+#if BTC_AV_INCLUDED
     [BTC_PID_A2DP]      = {btc_a2dp_call_handler,       btc_a2dp_cb_handler     },
     [BTC_PID_AVRC]      = {btc_avrc_call_handler,       NULL                    },
+#endif /* #if BTC_AV_INCLUDED */
+#if CONFIG_BT_SPP_ENABLED
+    [BTC_PID_SPP]       = {btc_spp_call_handler,        btc_spp_cb_handler      },
+#endif /* #if CONFIG_BT_SPP_ENABLED */
 #endif /* #if CONFIG_CLASSIC_BT_ENABLED */
 };
 
@@ -88,19 +103,19 @@ static void btc_task(void *arg)
                 break;
             }
             if (msg.arg) {
-                GKI_freebuf(msg.arg);
+                osi_free(msg.arg);
             }
         }
     }
 }
 
-static bt_status_t btc_task_post(btc_msg_t *msg)
+static bt_status_t btc_task_post(btc_msg_t *msg, task_post_t timeout)
 {
     if (msg == NULL) {
         return BT_STATUS_PARM_INVALID;
     }
 
-    if (xQueueSend(xBtcQueue, msg, 10 / portTICK_PERIOD_MS) != pdTRUE) {
+    if (xQueueSend(xBtcQueue, msg, timeout) != pdTRUE) {
         LOG_ERROR("Btc Post failed\n");
         return BT_STATUS_BUSY;
     }
@@ -120,7 +135,7 @@ bt_status_t btc_transfer_context(btc_msg_t *msg, void *arg, int arg_len, btc_arg
 
     memcpy(&lmsg, msg, sizeof(btc_msg_t));
     if (arg) {
-        lmsg.arg = (void *)GKI_getbuf(arg_len);
+        lmsg.arg = (void *)osi_malloc(arg_len);
         if (lmsg.arg == NULL) {
             return BT_STATUS_NOMEM;
         }
@@ -133,15 +148,15 @@ bt_status_t btc_transfer_context(btc_msg_t *msg, void *arg, int arg_len, btc_arg
         lmsg.arg = NULL;
     }
 
-    return btc_task_post(&lmsg);
+    return btc_task_post(&lmsg, TASK_POST_BLOCKING);
 }
 
 
 int btc_init(void)
 {
-    xBtcQueue = xQueueCreate(BTC_TASK_QUEUE_NUM, sizeof(btc_msg_t));
-    xTaskCreatePinnedToCore(btc_task, "Btc_task", BTC_TASK_STACK_SIZE, NULL, BTC_TASK_PRIO, &xBtcTaskHandle, 0);
-
+    xBtcQueue = xQueueCreate(BTC_TASK_QUEUE_LEN, sizeof(btc_msg_t));
+    xTaskCreatePinnedToCore(btc_task, "Btc_task", BTC_TASK_STACK_SIZE, NULL, BTC_TASK_PRIO, &xBtcTaskHandle, BTC_TASK_PINNED_TO_CORE);
+    btc_gap_callback_init();
     /* TODO: initial the profile_tab */
 
     return BT_STATUS_SUCCESS;

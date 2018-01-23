@@ -43,6 +43,8 @@ import serial
 import serial.tools.miniterm as miniterm
 import threading
 import ctypes
+import types
+from distutils.version import StrictVersion
 
 key_description = miniterm.key_description
 
@@ -53,6 +55,8 @@ CTRL_F = '\x06'
 CTRL_H = '\x08'
 CTRL_R = '\x12'
 CTRL_T = '\x14'
+CTRL_Y = '\x19'
+CTRL_P = '\x10'
 CTRL_RBRACKET = '\x1d'  # Ctrl+]
 
 # ANSI terminal codes
@@ -157,13 +161,17 @@ class ConsoleReader(StoppableThread):
             self.console.cleanup()
 
     def _cancel(self):
-        if hasattr(self.console, "cancel"):
-            self.console.cancel()
-        elif os.name == 'posix':
-            # this is the way cancel() is implemented in pyserial 3.1 or newer,
-            # older pyserial doesn't have this method, hence this hack.
+        if os.name == 'posix':
+            # this is the way cancel() is implemented in pyserial 3.3 or newer,
+            # older pyserial (3.1+) has cancellation implemented via 'select',
+            # which does not work when console sends an escape sequence response
+            # 
+            # even older pyserial (<3.1) does not have this method
             #
             # on Windows there is a different (also hacky) fix, applied above.
+            #
+            # note that TIOCSTI is not implemented in WSL / bash-on-Windows.
+            # TODO: introduce some workaround to make it work there.
             import fcntl, termios
             fcntl.ioctl(self.console.fd, termios.TIOCSTI, b'\0')
 
@@ -221,12 +229,22 @@ class Monitor(object):
             self.console.output = ANSIColorConverter(self.console.output)
             self.console.byte_output = ANSIColorConverter(self.console.byte_output)
 
+        if StrictVersion(serial.VERSION) < StrictVersion('3.3.0'):
+            # Use Console.getkey implementation from 3.3.0 (to be in sync with the ConsoleReader._cancel patch above)
+            def getkey_patched(self):
+                c = self.enc_stdin.read(1)
+                if c == unichr(0x7f):
+                    c = unichr(8)    # map the BS key (which yields DEL) to backspace
+                return c
+            
+            self.console.getkey = types.MethodType(getkey_patched, self.console) 
+        
         self.serial = serial_instance
         self.console_reader = ConsoleReader(self.console, self.event_queue)
         self.serial_reader = SerialReader(self.serial, self.event_queue)
         self.elf_file = elf_file
         self.make = make
-        self.toolchain_prefix = DEFAULT_TOOLCHAIN_PREFIX
+        self.toolchain_prefix = toolchain_prefix
         self.menu_key = CTRL_T
         self.exit_key = CTRL_RBRACKET
 
@@ -240,6 +258,7 @@ class Monitor(object):
         self._pressed_menu_key = False
         self._read_line = b""
         self._gdb_buffer = b""
+        self._output_enabled = True
 
     def main_loop(self):
         self.console_reader.start()
@@ -276,12 +295,15 @@ class Monitor(object):
                 self.serial.write(codecs.encode(key))
             except serial.SerialException:
                 pass # this shouldn't happen, but sometimes port has closed in serial thread
+            except UnicodeEncodeError:
+                pass # this can happen if a non-ascii character was passed, ignoring
 
     def handle_serial_input(self, data):
         # this may need to be made more efficient, as it pushes out a byte
         # at a time to the console
         for b in data:
-            self.console.write_bytes(b)
+            if self._output_enabled:
+                self.console.write_bytes(b)
             if b == b'\n': # end of line
                 self.handle_serial_input_line(self._read_line.strip())
                 self._read_line = b""
@@ -302,10 +324,23 @@ class Monitor(object):
             self.serial.setRTS(True)
             time.sleep(0.2)
             self.serial.setRTS(False)
+            self.output_enable(True)
         elif c == CTRL_F:  # Recompile & upload
             self.run_make("flash")
         elif c == CTRL_A:  # Recompile & upload app only
             self.run_make("app-flash")
+        elif c == CTRL_Y:  # Toggle output display
+            self.output_toggle()
+        elif c == CTRL_P:
+            yellow_print("Pause app (enter bootloader mode), press Ctrl-T Ctrl-R to restart")
+            # to fast trigger pause without press menu key
+            self.serial.setDTR(False)  # IO0=HIGH
+            self.serial.setRTS(True)   # EN=LOW, chip in reset
+            time.sleep(1.3) # timeouts taken from esptool.py, includes esp32r0 workaround. defaults: 0.1
+            self.serial.setDTR(True)   # IO0=LOW
+            self.serial.setRTS(False)  # EN=HIGH, chip out of reset
+            time.sleep(0.45) # timeouts taken from esptool.py, includes esp32r0 workaround. defaults: 0.05
+            self.serial.setDTR(False)  # IO0=HIGH, done
         else:
             red_print('--- unknown menu character {} --'.format(key_description(c)))
 
@@ -322,13 +357,16 @@ class Monitor(object):
 ---    {reset:7} Reset target board via RTS line
 ---    {make:7} Run 'make flash' to build & flash
 ---    {appmake:7} Run 'make app-flash to build & flash app
+---    {output:7} Toggle output display
+---    {pause:7} Reset target into bootloader to pause app via RTS line
 """.format(version=__version__,
            exit=key_description(self.exit_key),
            menu=key_description(self.menu_key),
            reset=key_description(CTRL_R),
            make=key_description(CTRL_F),
            appmake=key_description(CTRL_A),
-
+           output=key_description(CTRL_Y),
+           pause=key_description(CTRL_P),
            )
 
     def __enter__(self):
@@ -375,11 +413,13 @@ class Monitor(object):
                 p.wait()
             if p.returncode != 0:
                 self.prompt_next_action("Build failed")
+            else:
+                self.output_enable(True)
 
     def lookup_pc_address(self, pc_addr):
         translation = subprocess.check_output(
             ["%saddr2line" % self.toolchain_prefix,
-             "-pfia", "-e", self.elf_file, pc_addr],
+             "-pfiaC", "-e", self.elf_file, pc_addr],
             cwd=".")
         if not "?? ??:0" in translation:
             yellow_print(translation)
@@ -412,6 +452,13 @@ class Monitor(object):
                 pass  # happens on Windows, maybe other OSes
             self.prompt_next_action("gdb exited")
 
+    def output_enable(self, enable):
+        self._output_enabled = enable
+
+    def output_toggle(self):
+        self._output_enabled = not self._output_enabled
+        yellow_print("\nToggle output display: {}, Type Ctrl-T Ctrl-Y to show/disable output again.".format(self._output_enabled))
+
 def main():
     parser = argparse.ArgumentParser("idf_monitor - a serial output monitor for esp-idf")
 
@@ -442,11 +489,11 @@ def main():
         choices=['CR', 'LF', 'CRLF'],
         type=lambda c: c.upper(),
         help="End of line to use when sending to the serial port",
-        default='CRLF')
+        default='CR')
 
     parser.add_argument(
         'elf_file', help='ELF file of application',
-        type=argparse.FileType('r'))
+        type=argparse.FileType('rb'))
 
     args = parser.parse_args()
 
@@ -473,7 +520,7 @@ def main():
     except KeyError:
         pass  # not running a make jobserver
 
-    monitor = Monitor(serial_instance, args.elf_file.name, args.make, args.eol)
+    monitor = Monitor(serial_instance, args.elf_file.name, args.make, args.toolchain_prefix, args.eol)
 
     yellow_print('--- idf_monitor on {p.name} {p.baudrate} ---'.format(
         p=serial_instance))
@@ -541,7 +588,15 @@ if os.name == 'nt':
                             self.output.write(self.matched) # not an ANSI color code, display verbatim
                         self.matched = b''
                 else:
-                    self.output.write(b)
+                    try:
+                        self.output.write(b)
+                    except IOError:
+                        # Windows 10 bug since the Fall Creators Update, sometimes writing to console randomly fails
+                        # (but usually succeeds the second time, it seems.) Ref https://github.com/espressif/esp-idf/issues/1136
+                        try:
+                            self.output.write(b)
+                        except IOError:
+                            pass
                     self.matched = b''
 
         def flush(self):

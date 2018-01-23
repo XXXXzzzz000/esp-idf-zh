@@ -82,7 +82,11 @@ ESP-IDF 中的少量组件和部分 WiFi 协议栈就是通过链接脚本放置
 
 下面是一些应用程序可能需要放置到 IRAM 中的例子。
 
+<<<<<<< HEAD
 - ISR handler 必须被放置到 IRAM。更进一步说，ISR handler 智只能调用放到 IRAM 中的函数和 ROM 中的函数。 *Note 1:* 当前所有的 FreeRTOS API 都是放置到 IRAM 中的，所以可以被 ISR handler 安全调用。*Note 2:* ISR handler 所使用的常量数据（包括但不限于 ``const char``）以及被 ISR 调用的函数都必须通过 ``DRAM_ATTR`` 放到 DRAM 中。
+=======
+- Interrupt handlers must be placed into IRAM if ``ESP_INTR_FLAG_IRAM`` is used when registering the interrupt handler. In this case, ISR may only call functions placed into IRAM or functions present in ROM. *Note 1:* all FreeRTOS APIs are currently placed into IRAM, so are safe to call from interrupt handlers. If the ISR is placed into IRAM, all constant data used by the ISR and functions called from ISR (including, but not limited to, ``const char`` arrays), must be placed into DRAM using ``DRAM_ATTR``.
+>>>>>>> master
 
 - 某些对时间敏感的代码需要放知道 IRAM 中，这样可以减小从 flash 加载代码的时间。ESP32 通过一个 32 kB 的 cache 读取代码和数据。在某些情况下，将函数放到 IRAM 中可以减小 cache 缺失所造成的延迟。
 
@@ -103,13 +107,21 @@ DRAM (数据 RAM)
 
 非常量静态数据和以 0 初始化的数据别链接器放到一个 256 kB 的范围 ``0x3FFB0000 — 0x3FFF0000`` 内。注意，如果使用了蓝牙协议栈，则则个范围会被缩减到 64 kB（通过将起始位置移位到 ``0x3FFC0000``），如果使用了内存跟踪技术，这个范围的长度会被进一步缩减到 16 kB 或者 32 kB。放置静态数据后所剩余的所有空间将被用于运行时的堆空间。
 
+<<<<<<< HEAD
 常量数据也可以被放置到 DRAM 中，例如如果它用于 ISR handler 中（参考上面的 IRAM 章节）。要达到此目的，需要使用 ``DRAM_ATTR`` 进行定义 ::
+=======
+Constant data may also be placed into DRAM, for example if it is used in an ISR (see notes in IRAM section above). To do that, ``DRAM_ATTR`` define can be used::
+>>>>>>> master
 
 	DRAM_ATTR const char[] format_string = "%p %x";
 	char buffer[64];
 	sprintf(buffer, format_string, ptr, val);
 
+<<<<<<< HEAD
 不言而喻的是，不用在 ISR handler 中使用 ``printf`` 和其它输出函数。如果需要调试，可以在 ISR 中使用宏 ``ESP_EARLY_LOGx`` 来记录日志。在这种情况下，请确保将 ``TAG`` 和格式化字符串都放入 ``DRAM`` 中。
+=======
+Needless to say, it is not advised to use ``printf`` and other output functions in ISRs. For debugging purposes, use ``ESP_EARLY_LOGx`` macros when logging from ISRs. Make sure that both ``TAG`` and format string are placed into ``DRAM`` in that case.
+>>>>>>> master
 
 DROM (存储在 Flash 中的数据)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

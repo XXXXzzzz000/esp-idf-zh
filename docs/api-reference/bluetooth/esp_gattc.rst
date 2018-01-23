@@ -11,6 +11,7 @@ GATT CLIENT API
 应用程序示例
 -------------------
 
+<<<<<<< HEAD
 请检查 ESP-IDF 示例中的 :example:`bluetooth` 文件夹，它包含如下示例：
 
 :example:`bluetooth/gatt_client`
@@ -120,4 +121,14 @@ API 参考手册
 .. doxygenfunction:: esp_ble_gattc_execute_write
 .. doxygenfunction:: esp_ble_gattc_register_for_notify
 .. doxygenfunction:: esp_ble_gattc_unregister_for_notify
+=======
+Check :example:`bluetooth` folder in ESP-IDF examples, which contains the following application:
+
+* This is a GATT client demo. This demo can scan devices, connect to the GATT server and discover the service :example:`bluetooth/gatt_client`
+
+API Reference
+-------------
+
+.. include:: /_build/inc/esp_gattc_api.inc
+>>>>>>> master
 

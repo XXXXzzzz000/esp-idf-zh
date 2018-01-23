@@ -13,6 +13,7 @@ GATT DEFINES
 
 .. _Instructions: ../template.html
 
+<<<<<<< HEAD
 
 API 参考手册
 -------------
@@ -163,5 +164,11 @@ API 参考手册
 
 函数
 ^^^^^^^^^
+=======
+API Reference
+-------------
+
+.. include:: /_build/inc/esp_gatt_defs.inc
+>>>>>>> master
 
 

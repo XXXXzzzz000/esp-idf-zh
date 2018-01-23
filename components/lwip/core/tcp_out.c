@@ -152,6 +152,7 @@ tcp_send_fin(struct tcp_pcb *pcb)
       return ERR_OK;
     }
   }
+
   /* no data, no length, flags, copy=1, no optdata */
   return tcp_enqueue_flags(pcb, TCP_FIN);
 }
@@ -1065,6 +1066,9 @@ tcp_output(struct tcp_pcb *pcb)
 
 #if TCP_OVERSIZE_DBGCHECK
     seg->oversize_left = 0;
+    if (seg->next == NULL) {
+      pcb->unsent_oversize = 0;
+    }
 #endif /* TCP_OVERSIZE_DBGCHECK */
     err = tcp_output_segment(seg, pcb);
     if (err != ERR_OK) {

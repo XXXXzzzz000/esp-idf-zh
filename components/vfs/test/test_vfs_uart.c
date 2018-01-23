@@ -20,6 +20,9 @@
 #include "soc/uart_struct.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "driver/uart.h"
+#include "esp_vfs_dev.h"
 #include "sdkconfig.h"
 
 static void fwrite_str_loopback(const char* str, size_t size)
@@ -50,8 +53,8 @@ TEST_CASE("can read from stdin", "[vfs]")
 
     const size_t count = 12;
     srand(count);
-    char* data = (char*) calloc(1, count * 8 + 1);
-    char* buf = (char*) calloc(1, count * 8 + 1);
+    char* data = (char*) calloc(1, count * 8 + 2);
+    char* buf = (char*) calloc(1, count * 8 + 2);
     char* p = data;
     for (size_t i = 0; i < count; ++i) {
         p += sprintf(p, "%08x", rand());
@@ -62,13 +65,17 @@ TEST_CASE("can read from stdin", "[vfs]")
     size_t cb = fread(buf, 1, len, stdin);
     TEST_ASSERT_EQUAL(len, cb);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(data, buf, len);
+
+    free(data);
+    free(buf);
 }
 
 
-#if CONFIG_NEWLIB_STDOUT_ADDCR
-
 TEST_CASE("CRs are removed from the stdin correctly", "[vfs]")
 {
+    esp_vfs_dev_uart_set_rx_line_endings(ESP_LINE_ENDINGS_CRLF);
+    esp_vfs_dev_uart_set_tx_line_endings(ESP_LINE_ENDINGS_CRLF);
+
     flush_stdin_stdout();
     const char* send_str = "1234567890\n\r123\r\n4\n";
     /* with CONFIG_NEWLIB_STDOUT_ADDCR, the following will be sent on the wire.
@@ -120,5 +127,74 @@ TEST_CASE("CRs are removed from the stdin correctly", "[vfs]")
     TEST_ASSERT_EQUAL_UINT8_ARRAY("4\n", dst, 2);
 }
 
-#endif //CONFIG_NEWLIB_STDOUT_ADDCR
+TEST_CASE("can write to UART while another task is reading", "[vfs]")
+{
+    struct read_task_arg_t {
+        char* out_buffer;
+        size_t out_buffer_len;
+        SemaphoreHandle_t ready;
+        SemaphoreHandle_t done;
+    };
 
+    struct write_task_arg_t {
+        const char* str;
+        SemaphoreHandle_t done;
+    };
+
+    void read_task_fn(void* varg)
+    {
+        struct read_task_arg_t* parg = (struct read_task_arg_t*) varg;
+        parg->out_buffer[0] = 0;
+
+        fgets(parg->out_buffer, parg->out_buffer_len, stdin);
+        xSemaphoreGive(parg->done);
+        vTaskDelete(NULL);
+    }
+
+    void write_task_fn(void* varg)
+    {
+        struct write_task_arg_t* parg = (struct write_task_arg_t*) varg;
+        fwrite_str_loopback(parg->str, strlen(parg->str));
+        xSemaphoreGive(parg->done);
+        vTaskDelete(NULL);
+    }
+
+    char out_buffer[32];
+    size_t out_buffer_len = sizeof(out_buffer);
+
+    struct read_task_arg_t read_arg = {
+            .out_buffer = out_buffer,
+            .out_buffer_len = out_buffer_len,
+            .done = xSemaphoreCreateBinary()
+    };
+
+    struct write_task_arg_t write_arg = {
+            .str = "!(@*#&(!*@&#((SDasdkjhadsl\n",
+            .done = xSemaphoreCreateBinary()
+    };
+
+    flush_stdin_stdout();
+
+    ESP_ERROR_CHECK( uart_driver_install(CONFIG_CONSOLE_UART_NUM,
+            256, 0, 0, NULL, 0) );
+    esp_vfs_dev_uart_use_driver(CONFIG_CONSOLE_UART_NUM);
+
+
+    xTaskCreate(&read_task_fn, "vfs_read", 4096, &read_arg, 5, NULL);
+    vTaskDelay(10);
+    xTaskCreate(&write_task_fn, "vfs_write", 4096, &write_arg, 6, NULL);
+
+
+    int res = xSemaphoreTake(write_arg.done, 100 / portTICK_PERIOD_MS);
+    TEST_ASSERT(res);
+
+    res = xSemaphoreTake(read_arg.done, 100 / portTICK_PERIOD_MS);
+    TEST_ASSERT(res);
+
+    TEST_ASSERT_EQUAL(0, strcmp(write_arg.str, read_arg.out_buffer));
+
+    esp_vfs_dev_uart_use_nonblocking(CONFIG_CONSOLE_UART_NUM);
+    uart_driver_delete(CONFIG_CONSOLE_UART_NUM);
+    vSemaphoreDelete(read_arg.done);
+    vSemaphoreDelete(write_arg.done);
+}

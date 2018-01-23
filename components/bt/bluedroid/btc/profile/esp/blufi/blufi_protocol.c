@@ -33,7 +33,7 @@
 
 #include "blufi_int.h"
 
-#include "esp_wifi.h"
+//#include "esp_wifi.h"
 
 #if (GATTS_INCLUDED == TRUE)
 extern tBLUFI_ENV blufi_env;
@@ -100,6 +100,18 @@ void btc_blufi_protocol_handler(uint8_t type, uint8_t *data, int len)
             btc_blufi_send_encap(type, &data[0], sizeof(data));
             break;
         }
+        case BLUFI_TYPE_CTRL_SUBTYPE_DISCONNECT_BLE:
+            msg.sig = BTC_SIG_API_CB;
+            msg.pid = BTC_PID_BLUFI;
+            msg.act = ESP_BLUFI_EVENT_RECV_SLAVE_DISCONNECT_BLE;
+            btc_transfer_context(&msg, NULL, 0, NULL);
+            break;
+        case BLUFI_TYPE_CTRL_SUBTYPE_GET_WIFI_LIST:
+            msg.sig = BTC_SIG_API_CB;
+            msg.pid = BTC_PID_BLUFI;
+            msg.act = ESP_BLUFI_EVENT_GET_WIFI_LIST;
+            btc_transfer_context(&msg, NULL, 0, NULL);
+            break;
         default:
             LOG_ERROR("%s Unkown Ctrl pkt %02x\n", __func__, type);
             break;

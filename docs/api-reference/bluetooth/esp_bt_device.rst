@@ -15,6 +15,7 @@ BT 设备 API
 
 .. _Instructions: ../template.html
 
+<<<<<<< HEAD
 
 API 参考手册
 -------------
@@ -47,3 +48,9 @@ API 参考手册
 .. doxygenfunction:: esp_bt_dev_get_address
 .. doxygenfunction:: esp_bt_dev_set_device_name
 
+=======
+API Reference
+-------------
+
+.. include:: /_build/inc/esp_bt_device.inc
+>>>>>>> master

@@ -10,12 +10,16 @@
 API 参考手册
 -------------
 
+<<<<<<< HEAD
 头文件
 ^^^^^^^^^^^^
+=======
+.. include:: /_build/inc/esp_vfs.inc
+>>>>>>> master
 
-  * :component_file:`vfs/include/esp_vfs.h`
-  * :component_file:`vfs/include/esp_vfs_dev.h`
+.. include:: /_build/inc/esp_vfs_dev.inc
 
+<<<<<<< HEAD
 宏
 ^^^^^^
 
@@ -45,3 +49,5 @@ API 参考手册
 .. doxygenfunction:: esp_vfs_unlink
 .. doxygenfunction:: esp_vfs_rename
 .. doxygenfunction:: esp_vfs_dev_uart_register
+=======
+>>>>>>> master

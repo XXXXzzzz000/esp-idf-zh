@@ -26,6 +26,7 @@
 API 参考手册
 -------------
 
+<<<<<<< HEAD
 头文件
 ^^^^^^^^^^^^
 
@@ -88,5 +89,10 @@ API 参考手册
 .. doxygenfunction:: nvs_erase_all
 .. doxygenfunction:: nvs_commit
 .. doxygenfunction:: nvs_close
+=======
+.. include:: /_build/inc/nvs_flash.inc
+
+.. include:: /_build/inc/nvs.inc
+>>>>>>> master
 
 

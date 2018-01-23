@@ -61,7 +61,16 @@
      * 在 providers 列表中，点击 "CDT GCC Build Output Parser"，在编译器命令行模式（Compiler command pattern）的开始处输入 ``xtensa-esp32-elf-``。即编译器目录模式的完整路径是 ``xtensa-esp32-elf-(g?cc)|([gc]\+\+)|(clang)``。
      
 
+<<<<<<< HEAD
 在 Eclipse 中编译
+=======
+     * In the list of providers, click "CDT GCC Built-in Compiler Settings Cygwin". Under "Command to get compiler specs", replace the text ``${COMMAND}`` at the beginning of the line with ``xtensa-esp32-elf-gcc``. This means the full "Command to get compiler specs" should be ``xtensa-esp32-elf-gcc ${FLAGS} -E -P -v -dD "${INPUTS}"``.
+
+     * In the list of providers, click "CDT GCC Build Output Parser" and type ``xtensa-esp32-elf-`` at the beginning of the Compiler command pattern, and wrap remaining part with brackets. This means the full Compiler command pattern should be ``xtensa-esp32-elf-((g?cc)|([gc]\+\+)|(clang))``
+
+
+Building in Eclipse
+>>>>>>> master
 -------------------
 
 请按照 :ref:`在 Eclipse 中编译 <eclipse-build-project>` 中的步骤进行编译。
@@ -74,11 +83,15 @@
 Explanations of the technical reasons for some of these steps. You don't need to know this to use esp-idf with Eclipse on Windows,
  but it may be helpful background knowledge if you plan to do dig into the Eclipse support:
 
+<<<<<<< HEAD
 * The xtensa-esp32-elf-gcc cross-compiler is *not* a Cygwin toolchain, even though we tell Eclipse that it is one. 
 This is because msys2 uses Cygwin and supports Cygwin paths (of the type ``/c/blah`` instead of ``c:/blah`` or ``c:\\blah``). 
 In particular, xtensa-esp32-elf-gcc reports to the Eclipse "built-in compiler settings" function that its built-in include directories 
 are all under ``/usr/``, which is a Unix/Cygwin-style path that Eclipse otherwise can't resolve. By telling Eclipse the compiler is Cygwin,
  it resolves these paths internally using the ``cygpath`` utility.
+=======
+* The xtensa-esp32-elf-gcc cross-compiler is *not* a Cygwin toolchain, even though we tell Eclipse that it is one. This is because msys2 uses Cygwin and supports Unix-style paths (of the type ``/c/blah`` instead of ``c:/blah`` or ``c:\\blah``). In particular, xtensa-esp32-elf-gcc reports to the Eclipse "built-in compiler settings" function that its built-in include directories are all under ``/usr/``, which is a Unix/Cygwin-style path that Eclipse otherwise can't resolve. By telling Eclipse the compiler is Cygwin, it resolves these paths internally using the ``cygpath`` utility.
+>>>>>>> master
 
 * The same problem occurs when parsing make output from esp-idf. Eclipse parses this output to find header directories,
  but it can't resolve include directories of the form ``/c/blah`` without using ``cygpath``. There is a heuristic that
