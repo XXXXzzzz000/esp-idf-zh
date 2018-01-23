@@ -7,13 +7,13 @@ $ ./build.sh
 ```
 
 =======
-This folder contains source files of [ESP-IDF documentation](https://esp-idf.readthedocs.io/).
+该文件夹包含 [ESP-IDF文档](https://esp-idf.readthedocs.io/)的源文件.
 
-The sources do not render well in GitHub and some information is not visible at all.
+源代码在GitHub中不能很好地呈现，而且一些信息根本不可见.
 
-Use actual documentation generated instantly on each commit:
+使用每次提交时立即生成的实际文档:
 
-* Main server: https://esp-idf.readthedocs.io/ or http://esp-idf.rtfd.io/
-* Mirror: https://dl.espressif.com/doc/esp-idf/latest/
+* 主服务器: https://esp-idf.readthedocs.io/ or http://esp-idf.rtfd.io/
+* 镜像: https://dl.espressif.com/doc/esp-idf/latest/
 >>>>>>> master
 
